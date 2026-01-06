@@ -66,3 +66,8 @@ class SceneView:
     def set_bounding_box(self, origin, size):
         self._bbox_origin = np.array(origin)
         self._bbox_size = np.array(size)
+
+    
+    def capture_image(self, on_image):
+        self.widget.scene.scene.render_to_image(on_image)
+

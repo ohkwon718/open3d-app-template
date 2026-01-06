@@ -10,7 +10,7 @@ class MainWindow:
         self.window.set_on_layout(self.on_layout)
         
         self.scene_view = SceneView(self.window)
-        self.settings_panel = SettingsPanel()
+        self.settings_panel = SettingsPanel(self.window)
     
 
     def init(self):

@@ -2,7 +2,7 @@ from typing import Callable
 from .app_state import AppState
 from domain.example_logic import generate_point_cloud_data
 from viz.geometry_factory import create_point_cloud, create_coordinate_frame
-
+from infra.image_io import save_image
 
 class AppService:
     def __init__(self):
@@ -55,3 +55,10 @@ class AppService:
     def update_geometry_type(self, geom_type: str):
         self.state.geometry_type = geom_type
         self._notify_state_change()
+
+
+    def save_screenshot(self, scene_view, path):
+        def on_image(image):
+            save_image(path, image)
+
+        scene_view.capture_image(on_image)

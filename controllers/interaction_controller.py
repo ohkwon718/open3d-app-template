@@ -1,3 +1,6 @@
+import os
+from datetime import datetime
+
 from ui.scene_view import SceneView
 from ui.panels import SettingsPanel
 from app.app_service import AppService
@@ -15,7 +18,12 @@ class InteractionController:
         self.app_service.register_geometry_update_callback(self.on_geometry_updated)
         self.app_service.register_state_change_callback(self.on_state_changed)
         
-        self.settings_panel.generate_button.set_on_clicked(self.on_generate_clicked)
+        self.settings_panel.screenshot_button.set_on_clicked(
+            self.on_save_screenshot
+        )
+        self.settings_panel.generate_button.set_on_clicked(
+            self.on_generate_clicked
+        )
         self.settings_panel.point_count_slider.set_on_value_changed(
             self.on_point_count_changed
         )
@@ -25,7 +33,6 @@ class InteractionController:
         self.settings_panel.geom_type_combo.set_on_selection_changed(
             self.on_geometry_type_changed
         )
-        
         self.on_state_changed(self.app_service.state)
     
 
@@ -53,3 +60,12 @@ class InteractionController:
     def on_state_changed(self, state):
         self.settings_panel.set_point_count_label(state.point_count)
         self.settings_panel.set_size_label(state.geometry_size)
+
+
+    def on_save_screenshot(self):
+        path = self._make_screenshot_path()
+        self.app_service.save_screenshot(self.scene_view, path)
+
+    def _make_screenshot_path(self):
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        return os.path.join("export", f"screenshot_{ts}.png")
