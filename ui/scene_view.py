@@ -2,7 +2,7 @@ import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
-
+from domain.camera_math import model_matrix_to_extrinsic_matrix, create_camera_intrinsic_from_size
 
 class SceneView:
     def __init__(self, window, bbox_origin=None, bbox_size=None):
@@ -70,4 +70,38 @@ class SceneView:
     
     def capture_image(self, on_image):
         self.widget.scene.scene.render_to_image(on_image)
-
+    
+    
+    def get_view_state(self):
+        camera = self.widget.scene.camera
+        model_matrix = np.asarray(camera.get_model_matrix())
+        width = self.widget.frame.width
+        height = self.widget.frame.height
+        
+        return {
+            'model_matrix': model_matrix.tolist(),
+            'width': width,
+            'height': height
+        }
+        
+    
+    def apply_view_state(self, params):
+        print(f"[SceneView] set_camera_parameters called")
+        print(f"[SceneView] params keys: {params.keys()}")
+        model_matrix = np.array(params['model_matrix'])
+        width = params['width']
+        height = params['height']
+        print(f"[SceneView] model_matrix shape: {model_matrix.shape}")
+        print(f"[SceneView] width: {width}, height: {height}")
+        
+        extrinsic = model_matrix_to_extrinsic_matrix(model_matrix)
+        intrinsic = create_camera_intrinsic_from_size(width, height)
+        
+        bbox = o3d.geometry.AxisAlignedBoundingBox(
+            self._bbox_origin.tolist(),
+            (self._bbox_origin + self._bbox_size).tolist()
+        )
+        
+        print(f"[SceneView] Calling setup_camera")
+        self.widget.setup_camera(intrinsic, extrinsic, width, height, bbox)
+        print(f"[SceneView] Camera parameters set successfully")

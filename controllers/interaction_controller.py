@@ -21,6 +21,12 @@ class InteractionController:
         self.settings_panel.screenshot_button.set_on_clicked(
             self.on_save_screenshot
         )
+        self.settings_panel.save_camera_button.set_on_clicked(
+            self.on_save_camera
+        )
+        self.settings_panel.load_camera_button.set_on_clicked(
+            self.on_load_camera
+        )
         self.settings_panel.generate_button.set_on_clicked(
             self.on_generate_clicked
         )
@@ -66,6 +72,27 @@ class InteractionController:
         path = self._make_screenshot_path()
         self.app_service.save_screenshot(self.scene_view, path)
 
+
+    def on_save_camera(self):
+        path = self._make_camera_path()
+        self.app_service.save_view_state(self.scene_view, path)
+
+
+    def on_load_camera(self):
+        path = self._make_camera_path()
+        print(f"[Controller] on_load_camera: path = {path}")
+        print(f"[Controller] path exists: {os.path.exists(path)}")
+        if os.path.exists(path):
+            print(f"[Controller] Calling app_service.load_view_state")
+            self.app_service.load_view_state(self.scene_view, path)
+        else:
+            print(f"[Controller] Path does not exist, skipping load")
+    
+
     def _make_screenshot_path(self):
         ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        return os.path.join("export", f"screenshot_{ts}.png")
+        return os.path.join("export", "screenshots", f"screenshot_{ts}.png")
+    
+    
+    def _make_camera_path(self):
+        return os.path.join("export", "views","camera_view.json")

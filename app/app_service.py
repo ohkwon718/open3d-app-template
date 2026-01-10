@@ -3,6 +3,7 @@ from .app_state import AppState
 from domain.example_logic import generate_point_cloud_data
 from viz.geometry_factory import create_point_cloud, create_coordinate_frame
 from infra.image_io import save_image
+from infra.view_io import save_view_state, load_view_state
 
 class AppService:
     def __init__(self):
@@ -62,3 +63,15 @@ class AppService:
             save_image(path, image)
 
         scene_view.capture_image(on_image)
+    
+    def save_view_state(self, scene_view, path):
+        params = scene_view.get_view_state()
+        save_view_state(path, params)
+    
+    def load_view_state(self, scene_view, path):
+        print(f"[AppService] load_view_state: path = {path}")
+        params = load_view_state(path)
+        print(f"[AppService] Loaded params keys: {params.keys()}")
+        print(f"[AppService] Calling scene_view.apply_view_state")
+        scene_view.apply_view_state(params)
+        print(f"[AppService] apply_view_state completed")
