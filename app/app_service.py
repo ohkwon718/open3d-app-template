@@ -64,14 +64,12 @@ class AppService:
 
         scene_view.capture_image(on_image)
     
+    
     def save_view_state(self, scene_view, path):
         params = scene_view.get_view_state()
         save_view_state(path, params)
     
+    
     def load_view_state(self, scene_view, path):
-        print(f"[AppService] load_view_state: path = {path}")
         params = load_view_state(path)
-        print(f"[AppService] Loaded params keys: {params.keys()}")
-        print(f"[AppService] Calling scene_view.apply_view_state")
         scene_view.apply_view_state(params)
-        print(f"[AppService] apply_view_state completed")

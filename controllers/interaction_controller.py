@@ -46,8 +46,9 @@ class InteractionController:
         self.app_service.generate_geometry()
     
 
-    def on_point_count_changed(self, value: int):
-        self.app_service.update_point_count(value)
+    def on_point_count_changed(self, value):
+        int_value = self.settings_panel.point_count_slider.int_value
+        self.app_service.update_point_count(int_value)
     
 
     def on_size_changed(self, value: float):

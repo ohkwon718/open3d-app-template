@@ -86,13 +86,9 @@ class SceneView:
         
     
     def apply_view_state(self, params):
-        print(f"[SceneView] set_camera_parameters called")
-        print(f"[SceneView] params keys: {params.keys()}")
         model_matrix = np.array(params['model_matrix'])
         width = params['width']
         height = params['height']
-        print(f"[SceneView] model_matrix shape: {model_matrix.shape}")
-        print(f"[SceneView] width: {width}, height: {height}")
         
         extrinsic = model_matrix_to_extrinsic_matrix(model_matrix)
         intrinsic = create_camera_intrinsic_from_size(width, height)
@@ -102,6 +98,4 @@ class SceneView:
             (self._bbox_origin + self._bbox_size).tolist()
         )
         
-        print(f"[SceneView] Calling setup_camera")
         self.widget.setup_camera(intrinsic, extrinsic, width, height, bbox)
-        print(f"[SceneView] Camera parameters set successfully")
