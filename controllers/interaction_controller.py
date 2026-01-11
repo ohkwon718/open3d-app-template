@@ -1,5 +1,7 @@
 import os
+import glob
 from datetime import datetime
+import open3d.visualization.gui as gui
 
 from ui.scene_view import SceneView
 from ui.panels import SettingsPanel
@@ -7,8 +9,9 @@ from app.app_service import AppService
 
 
 class InteractionController:
-    def __init__(self, scene_view: SceneView, settings_panel: SettingsPanel, 
+    def __init__(self, window, scene_view: SceneView, settings_panel: SettingsPanel, 
                  app_service: AppService):
+        self.window = window
         self.scene_view = scene_view
         self.settings_panel = settings_panel
         self.app_service = app_service
@@ -26,6 +29,9 @@ class InteractionController:
         )
         self.settings_panel.load_camera_button.set_on_clicked(
             self.on_load_camera
+        )
+        self.settings_panel.load_latest_camera_button.set_on_clicked(
+            self.on_load_latest_camera
         )
         self.settings_panel.generate_button.set_on_clicked(
             self.on_generate_clicked
@@ -71,23 +77,47 @@ class InteractionController:
 
     def on_save_screenshot(self):
         path = self._make_screenshot_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         self.app_service.save_screenshot(self.scene_view, path)
 
 
     def on_save_camera(self):
         path = self._make_camera_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         self.app_service.save_view_state(self.scene_view, path)
 
 
     def on_load_camera(self):
-        path = self._make_camera_path()
-        print(f"[Controller] on_load_camera: path = {path}")
-        print(f"[Controller] path exists: {os.path.exists(path)}")
-        if os.path.exists(path):
-            print(f"[Controller] Calling app_service.load_view_state")
-            self.app_service.load_view_state(self.scene_view, path)
-        else:
-            print(f"[Controller] Path does not exist, skipping load")
+        views_dir = os.path.join("export", "views")
+        
+        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Load Camera View", 
+                            self.window.theme)
+        dlg.add_filter(".json", "JSON files")
+        if os.path.exists(views_dir):
+            dlg.set_path(views_dir)
+        
+        def on_done(path):
+            self.window.close_dialog()
+            if path:
+                self.app_service.load_view_state(self.scene_view, path)
+        
+        def on_cancel():
+            self.window.close_dialog()
+        
+        dlg.set_on_cancel(on_cancel)
+        dlg.set_on_done(on_done)
+        self.window.show_dialog(dlg)
+
+
+    def on_load_latest_camera(self):
+        views_dir = os.path.join("export", "views")
+        pattern = os.path.join(views_dir, "camera_view_*.json")
+        files = glob.glob(pattern)
+        
+        if not files:
+            return
+        latest_file = max(files, key=os.path.getmtime)
+        self.app_service.load_view_state(self.scene_view, latest_file)
     
 
     def _make_screenshot_path(self):
@@ -96,4 +126,5 @@ class InteractionController:
     
     
     def _make_camera_path(self):
-        return os.path.join("export", "views","camera_view.json")
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        return os.path.join("export", "views", f"camera_view_{ts}.json")

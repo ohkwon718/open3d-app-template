@@ -12,6 +12,7 @@ def main():
     main_window = MainWindow(window_size=(1680, 1050))
     
     controller = InteractionController(
+        window=main_window.window,
         scene_view=main_window.scene_view,
         settings_panel=main_window.settings_panel,
         app_service=app_service

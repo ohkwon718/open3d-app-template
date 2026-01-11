@@ -19,9 +19,10 @@ class SettingsPanel:
         screenshot_row.add_child(self.screenshot_button)
         view_group.add_child(screenshot_row)
         
-        camera_row = gui.Horiz(0.25 * em)
         camera_label = gui.Label('Camera View')
-        camera_row.add_child(camera_label)
+        view_group.add_child(camera_label)
+        
+        camera_row = gui.Horiz(0.25 * em)
         self.save_camera_button = gui.Button("Save")
         self.save_camera_button.horizontal_padding_em = 0.5
         self.save_camera_button.vertical_padding_em = 0
@@ -30,6 +31,10 @@ class SettingsPanel:
         self.load_camera_button.horizontal_padding_em = 0.5
         self.load_camera_button.vertical_padding_em = 0
         camera_row.add_child(self.load_camera_button)
+        self.load_latest_camera_button = gui.Button("Load Latest")
+        self.load_latest_camera_button.horizontal_padding_em = 0.5
+        self.load_latest_camera_button.vertical_padding_em = 0
+        camera_row.add_child(self.load_latest_camera_button)
         view_group.add_child(camera_row)
         self.widget.add_child(view_group)
         self.widget.add_fixed(separation_height)
