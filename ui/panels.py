@@ -89,12 +89,6 @@ class SettingsPanel:
         geometry_group.add_child(geom_type_row)
         self.widget.add_child(geometry_group)
         self.widget.add_fixed(10)
-        
-        self.widget.add_child(gui.Label("Output"))
-        self.widget.add_fixed(5)
-        self.output_text = gui.TextEdit()
-        self.output_text.text_value = ""
-        self.widget.add_child(self.output_text)
     
 
     def set_point_count_label(self, value: int):
@@ -103,10 +97,3 @@ class SettingsPanel:
 
     def set_size_label(self, value: float):
         self.size_label.text = f"{value:.2f}"
-    
-    def append_output(self, text: str):
-        current = self.output_text.text_value
-        self.output_text.text_value = current + text + "\n"
-    
-    def clear_output(self):
-        self.output_text.text_value = ""

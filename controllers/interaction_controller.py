@@ -77,31 +77,37 @@ class InteractionController:
 
     def on_save_screenshot(self):
         path = self._make_screenshot_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        self.app_service.save_screenshot(self.scene_view, path)
+        abs_path = os.path.abspath(path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        self.app_service.save_screenshot(self.scene_view, abs_path)
 
 
     def on_save_camera(self):
         path = self._make_camera_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        self.app_service.save_view_state(self.scene_view, path)
+        abs_path = os.path.abspath(path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        self.app_service.save_view_state(self.scene_view, abs_path)
 
 
     def on_load_camera(self):
+        original_cwd = os.getcwd()
         views_dir = os.path.join("export", "views")
         
         dlg = gui.FileDialog(gui.FileDialog.OPEN, "Load Camera View", 
                             self.window.theme)
         dlg.add_filter(".json", "JSON files")
         if os.path.exists(views_dir):
-            dlg.set_path(views_dir)
+            abs_path = os.path.abspath(views_dir)
+            dlg.set_path(abs_path)
         
         def on_done(path):
+            os.chdir(original_cwd)
             self.window.close_dialog()
             if path:
                 self.app_service.load_view_state(self.scene_view, path)
         
         def on_cancel():
+            os.chdir(original_cwd)s
             self.window.close_dialog()
         
         dlg.set_on_cancel(on_cancel)
@@ -110,7 +116,7 @@ class InteractionController:
 
 
     def on_load_latest_camera(self):
-        views_dir = os.path.join("export", "views")
+        views_dir = os.path.abspath(os.path.join("export", "views"))
         pattern = os.path.join(views_dir, "camera_view_*.json")
         files = glob.glob(pattern)
         
