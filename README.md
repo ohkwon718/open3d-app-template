@@ -51,10 +51,17 @@ open3d-app-template/
 │  └─ app_state.py
 ├─ domain/
 │  ├─ __init__.py
-│  └─ example_logic.py
+│  ├─ example_logic.py
+│  └─ camera_math.py
 ├─ viz/
 │  ├─ __init__.py
 │  └─ geometry_factory.py
+├─ vis/
+│  └─ geometry_factory.py
+├─ infra/
+│  ├─ __init__.py
+│  ├─ image_io.py
+│  └─ view_io.py
 └─ requirements.txt
 ```
 
@@ -136,19 +143,24 @@ open3d-app-template/
 - No `SceneWidget`
 - No `add_geometry()`
 
-## Demo Features
+### `domain/camera_math.py`
 
-The template includes a minimal but meaningful demo:
+**Purpose:** Camera-related mathematical utilities
 
-- Shows a point cloud or coordinate frame
-- **Button:** "Generate / Update Geometry"
-- **Slider:** Point count (100-10000)
-- **Slider:** Geometry size (0.1-5.0)
-- **Combo:** Geometry type (Point Cloud / Coordinate Frame)
+- Camera matrix transformations
+- Intrinsic/extrinsic matrix helpers
 
-Geometry updates flow: `controller → app → viz → scene`
+### `infra/`
 
-This proves the architecture works.
+**Purpose:** Infrastructure utilities
+
+- Image I/O operations
+- View I/O operations
+
+## Todo
+
+- [ ] Virtual Camera Visualization
+
 
 ## Notes
 
