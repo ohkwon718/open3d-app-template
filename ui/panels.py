@@ -8,7 +8,6 @@ class SettingsPanel:
         self.widget = gui.Vert(0, gui.Margins(0.5 * em, 0.25 * em, 0.25 * em, 0.25 * em))
         self.widget.add_fixed(separation_height)
         
-        
         view_group = gui.CollapsableVert("View", 0.25 * em, gui.Margins(em, 0, 0, 0))
         screenshot_row = gui.Horiz(0.25 * em)
         screenshot_label = gui.Label('Screenshot')
@@ -38,7 +37,6 @@ class SettingsPanel:
         view_group.add_child(camera_row)
         self.widget.add_child(view_group)
         self.widget.add_fixed(separation_height)
-        
 
         self.widget.add_child(gui.Label("Settings"))
         self.widget.add_fixed(10)
@@ -89,11 +87,9 @@ class SettingsPanel:
         geometry_group.add_child(geom_type_row)
         self.widget.add_child(geometry_group)
         self.widget.add_fixed(10)
-    
 
     def set_point_count_label(self, value: int):
         self.point_count_label.text = str(value)
-    
 
     def set_size_label(self, value: float):
         self.size_label.text = f"{value:.2f}"

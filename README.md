@@ -1,17 +1,12 @@
 # Open3D App Template
 
-A reusable template for building Open3D-based GUI applications with a clean separation between:
+A minimal, clone-and-go template for building Open3D-based GUI applications.
 
-- **UI composition**
-- **interaction logic**
-- **visualization**
-- **core application logic**
-
-The repository is intentionally minimal and opinionated, designed as a learning reference for structuring Open3D GUI software.
+This repository is intentionally minimal and direct—no frameworks, no unnecessary abstractions. Just Open3D and practical helpers to get you started quickly.
 
 ## Philosophy
 
-**Views render. Controllers decide. App executes. Domain computes.**
+**Minimal, direct, practical.** Use Open3D directly. Split files for clarity, not for architectural theory.
 
 ## Usage
 
@@ -36,126 +31,58 @@ python main.py
 ```
 open3d-app-template/
 ├─ README.md
-├─ main.py
-├─ ui/
+├─ main.py              # Entry point
+├─ ui/                  # UI components
 │  ├─ __init__.py
-│  ├─ main_window.py
-│  ├─ scene_view.py
-│  └─ panels.py
-├─ controllers/
+│  ├─ main_window.py    # Main window and callbacks
+│  ├─ scene_view.py     # 3D scene widget wrapper
+│  └─ panels.py         # Settings panel UI
+├─ tools/               # Reusable helpers
 │  ├─ __init__.py
-│  └─ interaction_controller.py
-├─ app/
-│  ├─ __init__.py
-│  ├─ app_service.py
-│  └─ app_state.py
-├─ domain/
-│  ├─ __init__.py
-│  ├─ example_logic.py
-│  └─ camera_math.py
-├─ viz/
-│  ├─ __init__.py
-│  └─ geometry_factory.py
-├─ vis/
-│  └─ geometry_factory.py
-├─ infra/
-│  ├─ __init__.py
-│  ├─ image_io.py
-│  └─ view_io.py
+│  ├─ camera_math.py    # Camera matrix utilities
+│  ├─ camera_viz.py     # Camera visualization helpers
+│  ├─ screenshot.py     # Screenshot capture/save
+│  └─ view_io.py        # Camera view save/load
+├─ samples/             # Optional demo data
+│  └─ train/
 └─ requirements.txt
 ```
 
-## Architecture
+## Code Organization
 
-### `main.py` — Composition Root
+### `main.py`
 
-- Creates `AppService`
-- Creates `MainWindow`
-- Creates `InteractionController`
-- Wires dependencies
-- Starts the GUI loop
+Simple entry point that initializes the Open3D application and creates the main window.
 
 ### `ui/main_window.py`
 
-**Purpose:** UI composition & layout
-
-- Window creation
-- Layout (content_rect, frames)
-- Ownership of `SceneView` and `SettingsPanel`
-- `run()` method
+Main window class that:
+- Creates and manages the window layout
+- Owns `SceneWidget` and `SettingsPanel`
+- Handles UI callbacks and user interactions
+- Contains example geometry generation helpers
 
 ### `ui/scene_view.py`
 
-**Purpose:** Visualization wrapper
-
-- Ownership of `gui.SceneWidget`
-- `add/update/remove_geometry(...)`
-- Camera/view helpers
+Wrapper around Open3D's `SceneWidget` that provides:
+- Geometry add/update/remove operations
+- Camera setup and view state management
+- Image capture functionality
 
 ### `ui/panels.py`
 
-**Purpose:** Panel UI only
+Settings panel UI component with:
+- Screenshot and camera view controls
+- Geometry generation controls
+- Settings sliders and inputs
 
-- Buttons, sliders, checkboxes
-- Internal layout of the panel
+### `tools/`
 
-### `controllers/interaction_controller.py`
-
-**Purpose:** Bridge between UI and app
-
-- References to `SceneView`, `SettingsPanel`, `AppService`
-- UI callbacks (`on_button_clicked`, `on_slider_changed`)
-- Calls to app use-cases
-
-**This is the only UI-side class allowed to call `AppService`.**
-
-### `app/app_service.py`
-
-**Purpose:** Application use-cases
-
-- User-intent methods (`run_example`, `load_data`, etc.)
-- Coordination logic
-- State updates
-- Event/callback mechanism
-
-### `app/app_state.py`
-
-**Purpose:** Single source of truth
-
-- Simple data (dataclass-style)
-- No behavior
-- No Open3D types if possible
-
-### `domain/example_logic.py`
-
-**Purpose:** Pure logic example
-
-- Small, testable functions (e.g., generate points, transform poses)
-- No Open3D GUI
-- No app/service code
-
-### `viz/geometry_factory.py`
-
-**Purpose:** Open3D object construction
-
-- Functions that convert data → `o3d.geometry.*`
-- Camera frustum / axes example
-- No `SceneWidget`
-- No `add_geometry()`
-
-### `domain/camera_math.py`
-
-**Purpose:** Camera-related mathematical utilities
-
-- Camera matrix transformations
-- Intrinsic/extrinsic matrix helpers
-
-### `infra/`
-
-**Purpose:** Infrastructure utilities
-
-- Image I/O operations
-- View I/O operations
+Small, reusable helper functions:
+- **`camera_math.py`** - Camera matrix transformations (intrinsic/extrinsic)
+- **`camera_viz.py`** - Camera visualization geometry helpers
+- **`screenshot.py`** - Screenshot capture and save utilities
+- **`view_io.py`** - Camera view state save/load operations
 
 ## Todo
 
@@ -164,4 +91,7 @@ open3d-app-template/
 
 ## Notes
 
-This template favors clarity over cleverness.
+- This template favors clarity over cleverness.
+- No app/service/domain/controller layers—just direct Open3D usage.
+- File splitting is for readability, not architectural theory.
+- Keep it simple and practical.
