@@ -2,7 +2,7 @@ import numpy as np
 import open3d as o3d
 
 
-def create_camera_geometry(intrinsic: np.ndarray, extrinsic: np.ndarray, 
+def create_camera_geometry(intrinsic: o3d.camera.PinholeCameraIntrinsic, extrinsic: np.ndarray, 
             img: np.ndarray = None, cam_color: np.ndarray = None, 
             O3DVisualizer: bool = False, scale: float = 1.0) -> list[o3d.geometry]:
     """Create camera frustum and optionally an image plane geometry."""

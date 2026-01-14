@@ -9,6 +9,8 @@ from ui.scene_view import SceneWidget
 from ui.panels import SettingsPanel
 from tools.view_io import save_view_state, load_view_state
 from tools.screenshot import save_image
+from tools.camera_viz import create_camera_geometry
+from tools.camera_math import to_o3d_extrinsic_from_c2w, create_camera_intrinsic_from_size
 
 
 def generate_point_cloud_data(count: int = 1000, size: float = 1.0):
@@ -43,6 +45,8 @@ class MainWindow:
         self.point_count = 1000
         self.geometry_size = 1.0
         self.geometry_type = "point_cloud"
+        self.selected_view_path = None
+        self.selected_image_path = None
         
         self._setup_callbacks()
 
@@ -76,6 +80,8 @@ class MainWindow:
         self.settings_panel.point_count_slider.set_on_value_changed(self.on_point_count_changed)
         self.settings_panel.size_slider.set_on_value_changed(self.on_size_changed)
         self.settings_panel.geom_type_combo.set_on_selection_changed(self.on_geometry_type_changed)
+        self.settings_panel.load_view_button.set_on_clicked(self.on_load_view)
+        self.settings_panel.load_capture_button.set_on_clicked(self.on_load_capture)
 
 
     def _update_ui_from_state(self):
@@ -90,10 +96,49 @@ class MainWindow:
                 size=self.geometry_size
             )
             geometry = create_point_cloud(points, colors)
-        else:
+            self.scene_view.update_geometry(geometry)
+        elif self.geometry_type == "coordinate_frame":
             geometry = create_coordinate_frame(size=self.geometry_size)
-        
-        self.scene_view.update_geometry(geometry)
+            self.scene_view.update_geometry(geometry)
+        elif self.geometry_type == "cameras":
+            # Use selected view and image files
+            if self.selected_view_path and os.path.exists(self.selected_view_path):
+                # Load camera data from view file
+                params = load_view_state(self.selected_view_path)
+                model_matrix = np.array(params['model_matrix'])
+                width = params['width']
+                height = params['height']
+                
+                # Calculate intrinsic and extrinsic matrices
+                extrinsic = to_o3d_extrinsic_from_c2w(model_matrix)
+                intrinsic = create_camera_intrinsic_from_size(width, height)
+                print(extrinsic.shape)
+                # Load image if provided
+                img_array = None
+                if self.selected_image_path and os.path.exists(self.selected_image_path):
+                    img_o3d = o3d.io.read_image(self.selected_image_path)
+                    img_array = np.asarray(img_o3d)
+                
+
+                def get_o3d_intrinsic(size, mtx):
+                    return o3d.camera.PinholeCameraIntrinsic(width=size[0], height=size[1], fx=mtx[0][0], fy=mtx[1][1], cx=mtx[0][2], cy=mtx[1][2])
+                intrinsic = get_o3d_intrinsic(size=(width, height), mtx=intrinsic)
+                geometries = create_camera_geometry(
+                    intrinsic=intrinsic,
+                    extrinsic=extrinsic,
+                    img=img_array,
+                    scale=self.geometry_size
+                )
+                
+                # Remove existing camera geometries if any
+                self.scene_view.remove_geometry("camera_frustum")
+                self.scene_view.remove_geometry("camera_image")
+                
+                # Add geometries to scene
+                if len(geometries) > 0:
+                    self.scene_view.add_geometry(geometries[0], "camera_frustum")
+                if len(geometries) > 1:
+                    self.scene_view.add_geometry(geometries[1], "camera_image")
 
 
     def on_point_count_changed(self, value):
@@ -107,7 +152,12 @@ class MainWindow:
 
 
     def on_geometry_type_changed(self, text: str, index: int):
-        self.geometry_type = "point_cloud" if index == 0 else "coordinate_frame"
+        if index == 0:
+            self.geometry_type = "point_cloud"
+        elif index == 1:
+            self.geometry_type = "coordinate_frame"
+        else:
+            self.geometry_type = "cameras"
 
 
     def on_save_screenshot(self):
@@ -176,3 +226,57 @@ class MainWindow:
     def _make_camera_path(self):
         ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         return os.path.join("export", "views", f"camera_view_{ts}.json")
+
+
+    def on_load_view(self):
+        original_cwd = os.getcwd()
+        views_dir = os.path.join("export", "views")
+        
+        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Load View", 
+                            self.window.theme)
+        dlg.add_filter(".json", "JSON files")
+        if os.path.exists(views_dir):
+            abs_path = os.path.abspath(views_dir)
+            dlg.set_path(abs_path)
+        
+        def on_done(path):
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+            if path:
+                self.selected_view_path = path
+        
+        def on_cancel():
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+        
+        dlg.set_on_cancel(on_cancel)
+        dlg.set_on_done(on_done)
+        self.window.show_dialog(dlg)
+
+
+    def on_load_capture(self):
+        original_cwd = os.getcwd()
+        screenshots_dir = os.path.join("export", "screenshots")
+        
+        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Load Image", 
+                            self.window.theme)
+        dlg.add_filter(".png", "PNG files")
+        dlg.add_filter(".jpg", "JPG files")
+        dlg.add_filter(".jpeg", "JPEG files")
+        if os.path.exists(screenshots_dir):
+            abs_path = os.path.abspath(screenshots_dir)
+            dlg.set_path(abs_path)
+        
+        def on_done(path):
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+            if path:
+                self.selected_image_path = path
+        
+        def on_cancel():
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+        
+        dlg.set_on_cancel(on_cancel)
+        dlg.set_on_done(on_done)
+        self.window.show_dialog(dlg)

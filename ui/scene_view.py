@@ -14,6 +14,7 @@ class SceneWidget:
         self._bbox_origin = np.array(bbox_origin) if bbox_origin is not None else np.array([0, 0, 0])
         self._bbox_size = np.array(bbox_size) if bbox_size is not None else np.array([1, 1, 1])
 
+
     def init(self, fov_deg=60):
         w = self.window
         self.widget = gui.SceneWidget()
@@ -30,11 +31,13 @@ class SceneWidget:
         center = (self._bbox_origin + self._bbox_size / 2).tolist()
         self.widget.setup_camera(fov_deg, bbox, center)
 
+
     def add_geometry(self, geometry, name: str = None):
         if name is None:
             name = self._geometry_name
         material = rendering.MaterialRecord()
         self.widget.scene.add_geometry(name, geometry, material)
+
 
     def update_geometry(self, geometry, name: str = None):
         if name is None:
@@ -43,27 +46,33 @@ class SceneWidget:
             self.widget.scene.remove_geometry(name)
         self.add_geometry(geometry, name)
 
+
     def remove_geometry(self, name: str = None):
         if name is None:
             name = self._geometry_name
         if self.widget.scene.has_geometry(name):
             self.widget.scene.remove_geometry(name)
 
+
     def setup_camera(self, fov_deg: float, bbox: o3d.geometry.AxisAlignedBoundingBox, 
                     center: list):
         self.widget.setup_camera(fov_deg, bbox, center)
+
 
     def fit_camera_to_geometry(self, geometry, fov_deg=60):
         bbox = geometry.get_axis_aligned_bounding_box()
         center = bbox.get_center()
         self.widget.setup_camera(fov_deg, bbox, center.tolist())
 
+
     def set_bounding_box(self, origin, size):
         self._bbox_origin = np.array(origin)
         self._bbox_size = np.array(size)
 
+
     def capture_image(self, on_image):
         self.widget.scene.scene.render_to_image(on_image)
+
 
     def get_view_state(self):
         camera = self.widget.scene.camera
@@ -76,6 +85,7 @@ class SceneWidget:
             'width': width,
             'height': height
         }
+        
         
     def apply_view_state(self, params):
         model_matrix = np.array(params['model_matrix'])
