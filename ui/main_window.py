@@ -46,11 +46,13 @@ class MainWindow:
         
         self._setup_callbacks()
 
+
     def init(self):
         self.scene_view.init()
         self.window.add_child(self.scene_view.widget)
         self.window.add_child(self.settings_panel.widget)
         self._update_ui_from_state()
+
 
     def on_layout(self, layout_context):
         r = self.window.content_rect
@@ -64,6 +66,7 @@ class MainWindow:
             r.x + r.width - width_panel, r.y, width_panel, r.height
         )
 
+
     def _setup_callbacks(self):
         self.settings_panel.screenshot_button.set_on_clicked(self.on_save_screenshot)
         self.settings_panel.save_camera_button.set_on_clicked(self.on_save_camera)
@@ -74,9 +77,11 @@ class MainWindow:
         self.settings_panel.size_slider.set_on_value_changed(self.on_size_changed)
         self.settings_panel.geom_type_combo.set_on_selection_changed(self.on_geometry_type_changed)
 
+
     def _update_ui_from_state(self):
         self.settings_panel.set_point_count_label(self.point_count)
         self.settings_panel.set_size_label(self.geometry_size)
+
 
     def on_generate_clicked(self):
         if self.geometry_type == "point_cloud":
@@ -90,16 +95,20 @@ class MainWindow:
         
         self.scene_view.update_geometry(geometry)
 
+
     def on_point_count_changed(self, value):
         self.point_count = self.settings_panel.point_count_slider.int_value
         self.settings_panel.set_point_count_label(self.point_count)
+
 
     def on_size_changed(self, value: float):
         self.geometry_size = self.settings_panel.size_slider.double_value
         self.settings_panel.set_size_label(self.geometry_size)
 
-    def on_geometry_type_changed(self, index: int, text: str):
+
+    def on_geometry_type_changed(self, text: str, index: int):
         self.geometry_type = "point_cloud" if index == 0 else "coordinate_frame"
+
 
     def on_save_screenshot(self):
         path = self._make_screenshot_path()
@@ -111,12 +120,14 @@ class MainWindow:
         
         self.scene_view.capture_image(on_image)
 
+
     def on_save_camera(self):
         path = self._make_camera_path()
         abs_path = os.path.abspath(path)
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         params = self.scene_view.get_view_state()
         save_view_state(abs_path, params)
+
 
     def on_load_camera(self):
         original_cwd = os.getcwd()
@@ -144,6 +155,7 @@ class MainWindow:
         dlg.set_on_done(on_done)
         self.window.show_dialog(dlg)
 
+
     def on_load_latest_camera(self):
         views_dir = os.path.abspath(os.path.join("export", "views"))
         pattern = os.path.join(views_dir, "camera_view_*.json")
@@ -155,10 +167,12 @@ class MainWindow:
         params = load_view_state(latest_file)
         self.scene_view.apply_view_state(params)
 
+
     def _make_screenshot_path(self):
         ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         return os.path.join("export", "screenshots", f"screenshot_{ts}.png")
-    
+
+
     def _make_camera_path(self):
         ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         return os.path.join("export", "views", f"camera_view_{ts}.json")
