@@ -118,7 +118,6 @@ class MainWindow:
                 if self.selected_image_path and os.path.exists(self.selected_image_path):
                     img_o3d = o3d.io.read_image(self.selected_image_path)
                     img_array = np.asarray(img_o3d)
-                
 
                 def get_o3d_intrinsic(size, mtx):
                     return o3d.camera.PinholeCameraIntrinsic(width=size[0], height=size[1], fx=mtx[0][0], fy=mtx[1][1], cx=mtx[0][2], cy=mtx[1][2])
@@ -127,7 +126,8 @@ class MainWindow:
                     intrinsic=intrinsic,
                     extrinsic=extrinsic,
                     img=img_array,
-                    scale=self.geometry_size
+                    scale=self.geometry_size,
+                    O3DVisualizer=True
                 )
                 
                 # Remove existing camera geometries if any
