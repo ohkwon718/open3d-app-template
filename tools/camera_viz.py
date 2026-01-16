@@ -1,5 +1,10 @@
 import numpy as np
 import open3d as o3d
+from tools.camera_math import create_camera_intrinsic_from_size
+
+def create_o3d_intrinsic(size):
+    intrinsic = create_camera_intrinsic_from_size(size[0], size[1])
+    return o3d.camera.PinholeCameraIntrinsic(width=size[0], height=size[1], fx=intrinsic[0][0], fy=intrinsic[1][1], cx=intrinsic[0][2], cy=intrinsic[1][2])
 
 
 def create_camera_geometry(intrinsic: o3d.camera.PinholeCameraIntrinsic, extrinsic: np.ndarray, 

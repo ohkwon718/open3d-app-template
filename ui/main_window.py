@@ -9,7 +9,7 @@ from ui.scene_view import SceneWidget
 from ui.panels import SettingsPanel
 from tools.view_io import save_view_state, load_view_state
 from tools.screenshot import save_image
-from tools.camera_viz import create_camera_geometry
+from tools.camera_viz import create_camera_geometry, create_o3d_intrinsic
 from tools.camera_math import to_o3d_extrinsic_from_c2w, create_camera_intrinsic_from_size
 
 
@@ -111,17 +111,15 @@ class MainWindow:
                 
                 # Calculate intrinsic and extrinsic matrices
                 extrinsic = to_o3d_extrinsic_from_c2w(model_matrix)
-                intrinsic = create_camera_intrinsic_from_size(width, height)
-                print(extrinsic.shape)
+                intrinsic = create_o3d_intrinsic(size=(width, height))
+                
+
                 # Load image if provided
                 img_array = None
                 if self.selected_image_path and os.path.exists(self.selected_image_path):
                     img_o3d = o3d.io.read_image(self.selected_image_path)
                     img_array = np.asarray(img_o3d)
 
-                def get_o3d_intrinsic(size, mtx):
-                    return o3d.camera.PinholeCameraIntrinsic(width=size[0], height=size[1], fx=mtx[0][0], fy=mtx[1][1], cx=mtx[0][2], cy=mtx[1][2])
-                intrinsic = get_o3d_intrinsic(size=(width, height), mtx=intrinsic)
                 geometries = create_camera_geometry(
                     intrinsic=intrinsic,
                     extrinsic=extrinsic,

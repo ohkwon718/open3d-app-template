@@ -25,3 +25,4 @@ def create_camera_intrinsic_from_size(width=1024, height=768, hfov=60.0, vfov=60
         [[fx, 0, width / 2.0],
          [0, fy, height / 2.0],
          [0, 0,  1]])
+

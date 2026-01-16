@@ -1,4 +1,5 @@
 import open3d.visualization.gui as gui
+import os
 
 
 class SettingsPanel:
@@ -37,8 +38,6 @@ class SettingsPanel:
         view_group.add_child(camera_row)
         self.widget.add_child(view_group)
         self.widget.add_fixed(separation_height)
-
-        self.widget.add_child(gui.Label("Settings"))
         self.widget.add_fixed(10)
         
         generation_group = gui.CollapsableVert("Generation", 0.25 * em, gui.Margins(em, 0, 0, 0))
@@ -98,6 +97,22 @@ class SettingsPanel:
         self.load_capture_button.vertical_padding_em = 0
         camera_load_row.add_child(self.load_capture_button)
         generation_group.add_child(camera_load_row)
+
+        camera_selected_group = gui.Vert(0.25 * em, gui.Margins(em, 0, 0, 0))
+
+        selected_view_row = gui.Horiz(0.25 * em)
+        selected_view_row.add_child(gui.Label("View:"))
+        self.selected_view_file_label = gui.Label("(none)")
+        selected_view_row.add_child(self.selected_view_file_label)
+        camera_selected_group.add_child(selected_view_row)
+
+        selected_capture_row = gui.Horiz(0.25 * em)
+        selected_capture_row.add_child(gui.Label("Capture:"))
+        self.selected_capture_file_label = gui.Label("(none)")
+        selected_capture_row.add_child(self.selected_capture_file_label)
+        camera_selected_group.add_child(selected_capture_row)
+
+        generation_group.add_child(camera_selected_group)
         self.widget.add_child(generation_group)
         self.widget.add_fixed(10)
 
@@ -106,3 +121,15 @@ class SettingsPanel:
 
     def set_size_label(self, value: float):
         self.size_label.text = f"{value:.2f}"
+
+    def set_selected_view_file(self, path: str | None):
+        if path:
+            self.selected_view_file_label.text = os.path.basename(path)
+        else:
+            self.selected_view_file_label.text = "(none)"
+
+    def set_selected_capture_file(self, path: str | None):
+        if path:
+            self.selected_capture_file_label.text = os.path.basename(path)
+        else:
+            self.selected_capture_file_label.text = "(none)"
