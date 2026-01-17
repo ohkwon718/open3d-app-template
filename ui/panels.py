@@ -5,6 +5,7 @@ import os
 class SettingsPanel:
     def __init__(self, window):
         em = window.theme.font_size
+        self._em = em
         separation_height = int(round(0.5 * em))
         self.widget = gui.Vert(0, gui.Margins(0.5 * em, 0.25 * em, 0.25 * em, 0.25 * em))
         self.widget.add_fixed(separation_height)
@@ -66,9 +67,9 @@ class SettingsPanel:
         point_count_row.add_child(point_count_label)
         self.point_count_slider = gui.Slider(gui.Slider.INT)
         self.point_count_slider.set_limits(100, 10000)
-        self.point_count_slider.int_value = 1000
+        self.point_count_slider.int_value = 10000
         point_count_row.add_child(self.point_count_slider)
-        self.point_count_label = gui.Label("1000")
+        self.point_count_label = gui.Label("10000")
         point_count_row.add_child(self.point_count_label)
         generation_group.add_child(point_count_row)
         generation_group.add_fixed(10)
@@ -116,6 +117,14 @@ class SettingsPanel:
         self.widget.add_child(generation_group)
         self.widget.add_fixed(10)
 
+        geometries_group = gui.CollapsableVert("Geometries", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.geometry_list = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
+        geometries_group.add_child(self.geometry_list)
+        self.widget.add_child(geometries_group)
+        self.widget.add_fixed(10)
+
+        self._geometry_rows: dict[str, gui.Checkbox] = {}
+
     def set_point_count_label(self, value: int):
         self.point_count_label.text = str(value)
 
@@ -133,3 +142,29 @@ class SettingsPanel:
             self.selected_capture_file_label.text = os.path.basename(path)
         else:
             self.selected_capture_file_label.text = "(none)"
+
+    def upsert_geometry_toggle(
+        self,
+        name: str,
+        label: str,
+        checked: bool,
+        on_checked,
+    ):
+        """
+        Adds (or updates) a checkbox row in the Geometries list.
+        `on_checked(checked: bool)` will be called when the checkbox changes.
+        """
+        checkbox = self._geometry_rows.get(name)
+        if checkbox is None:
+            row = gui.Horiz(0.25 * self._em)
+            checkbox = gui.Checkbox(label)
+            checkbox.checked = bool(checked)
+            checkbox.set_on_checked(on_checked)
+            row.add_child(checkbox)
+            self.geometry_list.add_child(row)
+            self._geometry_rows[name] = checkbox
+        else:
+            checkbox.text = label
+            checkbox.checked = bool(checked)
+            checkbox.set_on_checked(on_checked)
+        return checkbox

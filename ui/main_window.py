@@ -42,7 +42,7 @@ class MainWindow:
         self.settings_panel = SettingsPanel(self.window)
         
         # State
-        self.point_count = 1000
+        self.point_count = 10000
         self.geometry_size = 1.0
         self.geometry_type = "point_cloud"
         self.selected_view_path = None
@@ -56,6 +56,38 @@ class MainWindow:
         self.window.add_child(self.scene_view.widget)
         self.window.add_child(self.settings_panel.widget)
         self._update_ui_from_state()
+        self._init_default_geometries()
+
+    def _register_geometry_toggle(self, name: str, label: str):
+        checked = self.scene_view.is_geometry_visible(name) if self.scene_view.has_geometry(name) else False
+
+        def on_checked(is_checked: bool):
+            self.scene_view.set_geometry_visible(name, is_checked)
+
+        self.settings_panel.upsert_geometry_toggle(
+            name=name,
+            label=label,
+            checked=checked,
+            on_checked=on_checked,
+        )
+
+
+    def _init_default_geometries(self):
+        # Initialize both geometries on startup:
+        # - main point cloud (10k points by default)
+        # - coordinate axes at origin
+        points, colors = generate_point_cloud_data(
+            count=self.point_count,
+            size=self.geometry_size,
+        )
+        pcd = create_point_cloud(points, colors)
+        self.scene_view.update_geometry(pcd, name="main_geometry")
+        self._register_geometry_toggle("main_geometry", "Point Cloud")
+
+        axis = create_coordinate_frame(size=self.geometry_size)
+        self.scene_view.update_geometry(axis, name="axis")
+        self._register_geometry_toggle("axis", "Axis")
+        self.scene_view.fit_camera_to_geometry(pcd)
 
 
     def on_layout(self, layout_context):
@@ -96,10 +128,16 @@ class MainWindow:
                 size=self.geometry_size
             )
             geometry = create_point_cloud(points, colors)
-            self.scene_view.update_geometry(geometry)
+            self.scene_view.update_geometry(geometry, name="main_geometry")
+            self._register_geometry_toggle("main_geometry", "Point Cloud")
+            # Keep axis visible; only update its scale when size changes.
+            axis = create_coordinate_frame(size=self.geometry_size)
+            self.scene_view.update_geometry(axis, name="axis")
+            self._register_geometry_toggle("axis", "Axis")
         elif self.geometry_type == "coordinate_frame":
             geometry = create_coordinate_frame(size=self.geometry_size)
-            self.scene_view.update_geometry(geometry)
+            self.scene_view.update_geometry(geometry, name="axis")
+            self._register_geometry_toggle("axis", "Axis")
         elif self.geometry_type == "cameras":
             # Use selected view and image files
             if self.selected_view_path and os.path.exists(self.selected_view_path):
@@ -135,8 +173,10 @@ class MainWindow:
                 # Add geometries to scene
                 if len(geometries) > 0:
                     self.scene_view.add_geometry(geometries[0], "camera_frustum")
+                    self._register_geometry_toggle("camera_frustum", "Camera Frustum")
                 if len(geometries) > 1:
                     self.scene_view.add_geometry(geometries[1], "camera_image")
+                    self._register_geometry_toggle("camera_image", "Camera Image")
 
 
     def on_point_count_changed(self, value):
