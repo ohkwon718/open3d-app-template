@@ -282,6 +282,7 @@ class MainWindow:
             self.window.close_dialog()
             if path:
                 self.selected_view_path = path
+                self.settings_panel.set_selected_view_file(path)
         
         def on_cancel():
             os.chdir(original_cwd)
@@ -310,6 +311,7 @@ class MainWindow:
             self.window.close_dialog()
             if path:
                 self.selected_image_path = path
+                self.settings_panel.set_selected_capture_file(path)
         
         def on_cancel():
             os.chdir(original_cwd)

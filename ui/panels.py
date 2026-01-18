@@ -86,44 +86,44 @@ class SettingsPanel:
         generation_group.add_child(size_row)
         generation_group.add_fixed(10)
         
-        camera_load_row = gui.Horiz(0.25 * em)
-        camera_label = gui.Label("Camera")
-        camera_load_row.add_child(camera_label)
-        self.load_view_button = gui.Button("Load View")
+        # Camera file pickers (view + capture), styled as: label + text field + "..."
+        view_file_row = gui.Horiz()
+        view_file_row.add_child(gui.Label("View file"))
+        self.selected_view_file_edit = gui.TextEdit()
+        self.selected_view_file_edit.text_value = ""
+        view_file_row.add_child(self.selected_view_file_edit)
+        view_file_row.add_fixed(0.25 * em)
+        self.load_view_button = gui.Button("...")
         self.load_view_button.horizontal_padding_em = 0.5
         self.load_view_button.vertical_padding_em = 0
-        camera_load_row.add_child(self.load_view_button)
-        self.load_capture_button = gui.Button("Load Capture")
+        view_file_row.add_child(self.load_view_button)
+        generation_group.add_child(view_file_row)
+        generation_group.add_fixed(6)
+
+        capture_file_row = gui.Horiz()
+        capture_file_row.add_child(gui.Label("Capture file"))
+        self.selected_capture_file_edit = gui.TextEdit()
+        self.selected_capture_file_edit.text_value = ""
+        capture_file_row.add_child(self.selected_capture_file_edit)
+        capture_file_row.add_fixed(0.25 * em)
+        self.load_capture_button = gui.Button("...")
         self.load_capture_button.horizontal_padding_em = 0.5
         self.load_capture_button.vertical_padding_em = 0
-        camera_load_row.add_child(self.load_capture_button)
-        generation_group.add_child(camera_load_row)
-
-        camera_selected_group = gui.Vert(0.25 * em, gui.Margins(em, 0, 0, 0))
-
-        selected_view_row = gui.Horiz(0.25 * em)
-        selected_view_row.add_child(gui.Label("View:"))
-        self.selected_view_file_label = gui.Label("(none)")
-        selected_view_row.add_child(self.selected_view_file_label)
-        camera_selected_group.add_child(selected_view_row)
-
-        selected_capture_row = gui.Horiz(0.25 * em)
-        selected_capture_row.add_child(gui.Label("Capture:"))
-        self.selected_capture_file_label = gui.Label("(none)")
-        selected_capture_row.add_child(self.selected_capture_file_label)
-        camera_selected_group.add_child(selected_capture_row)
-
-        generation_group.add_child(camera_selected_group)
+        capture_file_row.add_child(self.load_capture_button)
+        generation_group.add_child(capture_file_row)
         self.widget.add_child(generation_group)
         self.widget.add_fixed(10)
-
+        
         geometries_group = gui.CollapsableVert("Geometries", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        self.geometry_list = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
-        geometries_group.add_child(self.geometry_list)
+        self.geometry_tree_view = gui.TreeView()
+        # NOTE: TreeView uses an internal root item; we attach our items under it.
+        self._geometry_tree_root = self.geometry_tree_view.get_root_item()
+        geometries_group.add_child(self.geometry_tree_view)
         self.widget.add_child(geometries_group)
         self.widget.add_fixed(10)
 
-        self._geometry_rows: dict[str, gui.Checkbox] = {}
+        self._geometry_tree_items: dict[str, object] = {}
+        self._geometry_tree_cells: dict[str, object] = {}
 
     def set_point_count_label(self, value: int):
         self.point_count_label.text = str(value)
@@ -133,15 +133,15 @@ class SettingsPanel:
 
     def set_selected_view_file(self, path: str | None):
         if path:
-            self.selected_view_file_label.text = os.path.basename(path)
+            self.selected_view_file_edit.text_value = path
         else:
-            self.selected_view_file_label.text = "(none)"
+            self.selected_view_file_edit.text_value = ""
 
     def set_selected_capture_file(self, path: str | None):
         if path:
-            self.selected_capture_file_label.text = os.path.basename(path)
+            self.selected_capture_file_edit.text_value = path
         else:
-            self.selected_capture_file_label.text = "(none)"
+            self.selected_capture_file_edit.text_value = ""
 
     def upsert_geometry_toggle(
         self,
@@ -151,20 +151,44 @@ class SettingsPanel:
         on_checked,
     ):
         """
-        Adds (or updates) a checkbox row in the Geometries list.
+        Adds (or updates) a checkbox row in the Geometries tree.
         `on_checked(checked: bool)` will be called when the checkbox changes.
         """
-        checkbox = self._geometry_rows.get(name)
-        if checkbox is None:
-            row = gui.Horiz(0.25 * self._em)
-            checkbox = gui.Checkbox(label)
-            checkbox.checked = bool(checked)
-            checkbox.set_on_checked(on_checked)
-            row.add_child(checkbox)
-            self.geometry_list.add_child(row)
-            self._geometry_rows[name] = checkbox
-        else:
-            checkbox.text = label
-            checkbox.checked = bool(checked)
-            checkbox.set_on_checked(on_checked)
+        # Preferred path: Open3D provides a tree cell with a built-in checkbox + label.
+        if hasattr(gui, "CheckableTextTreeCell"):
+            cell = self._geometry_tree_cells.get(name)
+            if cell is None:
+                # Open3D variants differ slightly:
+                # - Some require the callback in the constructor: (text, checked, on_checked)
+                # - Some allow setting callback after construction.
+                try:
+                    cell = gui.CheckableTextTreeCell(label, bool(checked), on_checked)
+                except TypeError:
+                    cell = gui.CheckableTextTreeCell(label, bool(checked))
+                    if hasattr(cell, "set_on_checked"):
+                        cell.set_on_checked(on_checked)
+                    elif hasattr(cell, "set_on_check"):
+                        cell.set_on_check(on_checked)
+
+                item = self.geometry_tree_view.add_item(self._geometry_tree_root, cell)
+                self._geometry_tree_items[name] = item
+                self._geometry_tree_cells[name] = cell
+            else:
+                if hasattr(cell, "text"):
+                    cell.text = label
+                if hasattr(cell, "checked"):
+                    cell.checked = bool(checked)
+
+                if hasattr(cell, "set_on_checked"):
+                    cell.set_on_checked(on_checked)
+                elif hasattr(cell, "set_on_check"):
+                    cell.set_on_check(on_checked)
+            return cell
+
+        # Fallback: if CheckableTextTreeCell isn't available in this Open3D version,
+        # keep the UI functional with a regular checkbox row (non-tree).
+        # (We still keep this method signature stable for callers.)
+        checkbox = gui.Checkbox(label)
+        checkbox.checked = bool(checked)
+        checkbox.set_on_checked(on_checked)
         return checkbox
