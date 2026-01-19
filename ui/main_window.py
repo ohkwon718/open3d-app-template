@@ -117,6 +117,8 @@ class MainWindow:
         self.settings_panel.load_capture_button.set_on_clicked(self.on_load_capture)
         self.settings_panel.camera_scale_slider.set_on_value_changed(self.on_camera_scale_changed)
         self.settings_panel.update_cameras_button.set_on_clicked(self.on_update_cameras_clicked)
+        self.settings_panel.delete_selected_camera_button.set_on_clicked(self.on_delete_selected_camera_clicked)
+        self.settings_panel.set_on_delete_camera_requested(self.on_delete_camera_requested)
 
 
     def _update_ui_from_state(self):
@@ -179,6 +181,7 @@ class MainWindow:
         idx = self._camera_instance_counter
         frustum_name = f"camera_frustum_{idx}"
         image_name = f"camera_image_{idx}"
+        self.settings_panel.upsert_camera_item(idx)
 
         # Use update_geometry so re-clicking after hiding keeps hidden state hidden,
         # and the registry stays consistent.
@@ -188,6 +191,41 @@ class MainWindow:
         if len(geometries) > 1:
             self.scene_view.update_geometry(geometries[1], name=image_name)
             self._register_geometry_toggle(image_name, f"Camera {idx} Image")
+
+    def _try_parse_camera_index(self, geometry_name: str) -> int | None:
+        if geometry_name.startswith("camera_frustum_"):
+            suffix = geometry_name.removeprefix("camera_frustum_")
+        elif geometry_name.startswith("camera_image_"):
+            suffix = geometry_name.removeprefix("camera_image_")
+        else:
+            return None
+        try:
+            return int(suffix)
+        except ValueError:
+            return None
+
+    def _delete_camera_index(self, idx: int):
+        frustum_name = f"camera_frustum_{idx}"
+        image_name = f"camera_image_{idx}"
+
+        if self.scene_view.has_geometry(frustum_name):
+            self.scene_view.remove_geometry(frustum_name)
+        self.settings_panel.remove_geometry_toggle(frustum_name)
+
+        if self.scene_view.has_geometry(image_name):
+            self.scene_view.remove_geometry(image_name)
+        self.settings_panel.remove_geometry_toggle(image_name)
+
+        self.settings_panel.remove_camera_item(idx)
+
+    def on_delete_selected_camera_clicked(self):
+        idx = self.settings_panel.get_selected_camera_index()
+        if idx is None:
+            return
+        self._delete_camera_index(idx)
+
+    def on_delete_camera_requested(self, idx: int):
+        self._delete_camera_index(idx)
 
 
     def on_save_screenshot(self):

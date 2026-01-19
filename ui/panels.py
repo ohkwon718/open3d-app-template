@@ -4,6 +4,7 @@ import os
 
 class SettingsPanel:
     def __init__(self, window):
+        self._window = window
         em = window.theme.font_size
         self._em = em
         separation_height = int(round(0.5 * em))
@@ -128,6 +129,19 @@ class SettingsPanel:
         self.update_cameras_button = gui.Button("Add Camera")
         update_cameras_row.add_child(self.update_cameras_button)
         cameras_group.add_child(update_cameras_row)
+        cameras_group.add_fixed(10)
+
+        cameras_group.add_child(gui.Label("Current cameras"))
+        self.cameras_tree_view = gui.TreeView()
+        self._cameras_tree_root = self.cameras_tree_view.get_root_item()
+        cameras_group.add_child(self.cameras_tree_view)
+        cameras_group.add_fixed(6)
+
+        camera_delete_row = gui.Horiz(0.25 * em)
+        camera_delete_row.add_child(gui.Label("Delete"))
+        self.delete_selected_camera_button = gui.Button("Delete selected camera")
+        camera_delete_row.add_child(self.delete_selected_camera_button)
+        cameras_group.add_child(camera_delete_row)
 
         self.widget.add_child(cameras_group)
         self.widget.add_fixed(separation_height)
@@ -139,11 +153,36 @@ class SettingsPanel:
         # NOTE: TreeView uses an internal root item; we attach our items under it.
         self._geometry_tree_root = self.geometry_tree_view.get_root_item()
         geometries_group.add_child(self.geometry_tree_view)
+
         self.widget.add_child(geometries_group)
         self.widget.add_fixed(10)
 
         self._geometry_tree_items: dict[str, object] = {}
         self._geometry_tree_cells: dict[str, object] = {}
+        self._geometry_tree_item_to_name: dict[object, str] = {}
+        self._selected_geometry_name: str | None = None
+
+        self._camera_tree_items: dict[int, object] = {}
+        self._camera_tree_item_to_index: dict[object, int] = {}
+        self._selected_camera_index: int | None = None
+
+        # Optional callback set by MainWindow.
+        self._on_delete_geometry_requested = None
+        self._on_delete_camera_requested = None
+
+        # Track selection if supported by this Open3D build.
+        if hasattr(self.geometry_tree_view, "set_on_selection_changed"):
+            def _on_selection_changed(*args):
+                # Different Open3D versions pass different args; we rely on our mapping.
+                item = args[-1] if args else None
+                self._selected_geometry_name = self._geometry_tree_item_to_name.get(item, None)
+            self.geometry_tree_view.set_on_selection_changed(_on_selection_changed)
+
+        if hasattr(self.cameras_tree_view, "set_on_selection_changed"):
+            def _on_camera_selection_changed(*args):
+                item = args[-1] if args else None
+                self._selected_camera_index = self._camera_tree_item_to_index.get(item, None)
+            self.cameras_tree_view.set_on_selection_changed(_on_camera_selection_changed)
 
     def set_point_count_label(self, value: int):
         self.point_count_label.text = str(value)
@@ -165,6 +204,77 @@ class SettingsPanel:
             self.selected_capture_file_edit.text_value = path
         else:
             self.selected_capture_file_edit.text_value = ""
+
+    def set_on_delete_geometry_requested(self, callback):
+        """callback(name: str) -> None"""
+        self._on_delete_geometry_requested = callback
+
+    def set_on_delete_camera_requested(self, callback):
+        """callback(idx: int) -> None"""
+        self._on_delete_camera_requested = callback
+
+    def _request_delete_geometry(self, name: str):
+        # If the app didn't set a delete callback yet, do nothing.
+        if self._on_delete_geometry_requested is None:
+            return
+        self._on_delete_geometry_requested(name)
+
+    def _request_delete_camera(self, idx: int):
+        if self._on_delete_camera_requested is None:
+            return
+        self._on_delete_camera_requested(idx)
+
+    def get_selected_geometry_name(self) -> str | None:
+        return self._selected_geometry_name
+
+    def get_selected_camera_index(self) -> int | None:
+        return self._selected_camera_index
+
+    def upsert_camera_item(self, idx: int, label: str | None = None):
+        if label is None:
+            label = f"Camera {idx}"
+        item = self._camera_tree_items.get(idx)
+        if item is None:
+            # Use a plain text item for broad compatibility.
+            if hasattr(self.cameras_tree_view, "add_text_item"):
+                item = self.cameras_tree_view.add_text_item(self._cameras_tree_root, label)
+            else:
+                # Fallback: use a checkable cell as text-only (checked state irrelevant here)
+                cell = gui.CheckableTextTreeCell(label, True, lambda _: None) if hasattr(gui, "CheckableTextTreeCell") else gui.Label(label)
+                item = self.cameras_tree_view.add_item(self._cameras_tree_root, cell)
+            self._camera_tree_items[idx] = item
+            self._camera_tree_item_to_index[item] = idx
+        else:
+            # Best-effort rename if API supports it; otherwise leave as-is.
+            pass
+
+    def remove_camera_item(self, idx: int):
+        item = self._camera_tree_items.get(idx)
+        if item is not None and hasattr(self.cameras_tree_view, "remove_item"):
+            try:
+                self.cameras_tree_view.remove_item(item)
+            except Exception:
+                pass
+        self._camera_tree_items.pop(idx, None)
+        if item is not None:
+            self._camera_tree_item_to_index.pop(item, None)
+        if self._selected_camera_index == idx:
+            self._selected_camera_index = None
+
+    def remove_geometry_toggle(self, name: str):
+        # Remove a row from the TreeView and internal mappings.
+        item = self._geometry_tree_items.get(name)
+        if item is not None and hasattr(self.geometry_tree_view, "remove_item"):
+            try:
+                self.geometry_tree_view.remove_item(item)
+            except Exception:
+                pass
+        self._geometry_tree_items.pop(name, None)
+        self._geometry_tree_cells.pop(name, None)
+        if item is not None:
+            self._geometry_tree_item_to_name.pop(item, None)
+        if self._selected_geometry_name == name:
+            self._selected_geometry_name = None
 
     def upsert_geometry_toggle(
         self,
@@ -196,6 +306,7 @@ class SettingsPanel:
                 item = self.geometry_tree_view.add_item(self._geometry_tree_root, cell)
                 self._geometry_tree_items[name] = item
                 self._geometry_tree_cells[name] = cell
+                self._geometry_tree_item_to_name[item] = name
             else:
                 if hasattr(cell, "text"):
                     cell.text = label
