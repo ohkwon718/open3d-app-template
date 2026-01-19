@@ -32,7 +32,10 @@ def create_camera_geometry(intrinsic: o3d.camera.PinholeCameraIntrinsic, extrins
 
         rectangle.triangle_material_ids = o3d.utility.IntVector(np.zeros(2, dtype=np.int32))
         if O3DVisualizer:
-            rectangle.triangle_uvs = o3d.utility.Vector2dVector(np.array([[0, 1], [1, 1], [1, 0], [0, 1], [1, 0], [0, 0]]))            
+            # NOTE: Open3D GUI texture mapping is flipped for this camera plane in our setup.
+            # Flip V only (vertical) so the image appears with the expected orientation.
+            uvs = np.array([[0, 1], [1, 1], [1, 0], [0, 1], [1, 0], [0, 0]])
+            rectangle.triangle_uvs = o3d.utility.Vector2dVector(uvs)
             rectangle.paint_uniform_color([1.0, 1.0, 1.0])
             rectangle = o3d.t.geometry.TriangleMesh.from_legacy(rectangle)        
             material = o3d.visualization.Material('defaultUnlit')
@@ -41,7 +44,10 @@ def create_camera_geometry(intrinsic: o3d.camera.PinholeCameraIntrinsic, extrins
         else:
             # visualize the texture on the both sides of the rectangle
             rectangle.textures = [tex, tex]        
-            rectangle.triangle_uvs = o3d.utility.Vector2dVector(np.array([[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]]))
+            # NOTE: Open3D GUI texture mapping is flipped for this camera plane in our setup.
+            # Flip V only (vertical) so the image appears with the expected orientation.
+            uvs = np.array([[0, 1], [1, 1], [1, 0], [0, 1], [1, 0], [0, 0]])
+            rectangle.triangle_uvs = o3d.utility.Vector2dVector(uvs)
             rectangle.triangle_material_ids = o3d.utility.IntVector(np.array([0, 0, 0, 1, 1, 1], dtype=np.int32))
         geometries.append(rectangle)    
     return geometries

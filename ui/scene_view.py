@@ -47,8 +47,22 @@ class SceneWidget:
             # Camera frustums etc.
             material.shader = "unlitLine"
             material.line_width = 2.0
-        elif isinstance(geometry, o3d.geometry.TriangleMesh) and geometry.has_vertex_colors():
-            material.shader = "defaultUnlit"
+        elif isinstance(geometry, o3d.geometry.TriangleMesh):
+            # If this mesh has a texture + UVs (e.g. camera image plane), we must
+            # explicitly set the albedo texture for Open3DScene rendering.
+            textures = getattr(geometry, "textures", None)
+            has_textures = textures is not None and len(textures) > 0
+            has_uvs = hasattr(geometry, "has_triangle_uvs") and geometry.has_triangle_uvs()
+            if has_textures and has_uvs:
+                material.shader = "defaultUnlit"
+                material.base_color = [1.0, 1.0, 1.0, 1.0]
+                # NOTE: In some Open3D builds, mesh.textures[i] returns a non-owned
+                # pybind reference ("non-held"). MaterialRecord requires a held Image.
+                # Create a fresh, owned legacy Image copy.
+                tex0 = textures[0]
+                material.albedo_img = o3d.geometry.Image(np.asarray(tex0))
+            elif geometry.has_vertex_colors():
+                material.shader = "defaultUnlit"
         return material
 
     def _add_to_scene(self, name: str):

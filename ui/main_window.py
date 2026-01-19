@@ -117,6 +117,7 @@ class MainWindow:
         self.settings_panel.load_capture_button.set_on_clicked(self.on_load_capture)
         self.settings_panel.camera_scale_slider.set_on_value_changed(self.on_camera_scale_changed)
         self.settings_panel.update_cameras_button.set_on_clicked(self.on_update_cameras_clicked)
+        self.settings_panel.add_camera_from_scene_button.set_on_clicked(self.on_add_camera_from_scene_clicked)
         self.settings_panel.delete_selected_camera_button.set_on_clicked(self.on_delete_selected_camera_clicked)
         self.settings_panel.set_on_delete_camera_requested(self.on_delete_camera_requested)
 
@@ -174,7 +175,7 @@ class MainWindow:
             extrinsic=extrinsic,
             img=img_array,
             scale=self.camera_scale,
-            O3DVisualizer=True,
+            O3DVisualizer=False,
         )
 
         self._camera_instance_counter += 1
@@ -191,6 +192,50 @@ class MainWindow:
         if len(geometries) > 1:
             self.scene_view.update_geometry(geometries[1], name=image_name)
             self._register_geometry_toggle(image_name, f"Camera {idx} Image")
+
+    def on_add_camera_from_scene_clicked(self):
+        """
+        Adds a camera frustum from the *current* viewer camera (no files required).
+        Uses SceneWidget.get_view_state() -> model_matrix/width/height.
+        """
+        params = self.scene_view.get_view_state()
+        model_matrix = np.array(params["model_matrix"])
+        width = params["width"]
+        height = params["height"]
+
+        extrinsic = to_o3d_extrinsic_from_c2w(model_matrix)
+        intrinsic = create_o3d_intrinsic(size=(width, height))
+
+        # Capture a screenshot and use it as the camera "image plane" texture.
+        def on_image(image):
+            img_array = np.asarray(image)
+
+            # Default behavior: do NOT write screenshots to disk when adding from scene.
+            # (User can still manually save via View -> Screenshot.)
+
+            geometries = create_camera_geometry(
+                intrinsic=intrinsic,
+                extrinsic=extrinsic,
+                img=img_array,
+                scale=self.camera_scale,
+                O3DVisualizer=False,
+            )
+
+            self._camera_instance_counter += 1
+            idx = self._camera_instance_counter
+            frustum_name = f"camera_frustum_{idx}"
+            image_name = f"camera_image_{idx}"
+
+            self.settings_panel.upsert_camera_item(idx, label=f"Camera {idx} (scene)")
+
+            if len(geometries) > 0:
+                self.scene_view.update_geometry(geometries[0], name=frustum_name)
+                self._register_geometry_toggle(frustum_name, f"Camera {idx} Frustum")
+            if len(geometries) > 1:
+                self.scene_view.update_geometry(geometries[1], name=image_name)
+                self._register_geometry_toggle(image_name, f"Camera {idx} Image")
+
+        self.scene_view.capture_image(on_image)
 
     def _try_parse_camera_index(self, geometry_name: str) -> int | None:
         if geometry_name.startswith("camera_frustum_"):

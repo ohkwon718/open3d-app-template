@@ -126,8 +126,10 @@ class SettingsPanel:
 
         update_cameras_row = gui.Horiz(0.25 * em)
         update_cameras_row.add_child(gui.Label("Update"))
-        self.update_cameras_button = gui.Button("Add Camera")
+        self.update_cameras_button = gui.Button("Add from files")
         update_cameras_row.add_child(self.update_cameras_button)
+        self.add_camera_from_scene_button = gui.Button("Add from scene")
+        update_cameras_row.add_child(self.add_camera_from_scene_button)
         cameras_group.add_child(update_cameras_row)
         cameras_group.add_fixed(10)
 
