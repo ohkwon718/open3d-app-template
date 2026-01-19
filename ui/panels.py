@@ -42,14 +42,9 @@ class SettingsPanel:
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)
         
-        ######################### Generation group #########################
-        generation_group = gui.CollapsableVert("Generation", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        ######################### Point Cloud group #########################
+        point_cloud_group = gui.CollapsableVert("Point Cloud", 0.25 * em, gui.Margins(em, 0, 0, 0))
 
-        # Geometry type selection via tabs (instead of combobox).
-        self.geom_type_tabs = gui.TabControl()
-
-        # --- Point Cloud tab (type-specific controls)
-        point_cloud_tab = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
         point_count_row = gui.Horiz(0.25 * em)
         point_count_label = gui.Label("Point Count")
         point_count_row.add_child(point_count_label)
@@ -59,30 +54,11 @@ class SettingsPanel:
         point_count_row.add_child(self.point_count_slider)
         self.point_count_label = gui.Label("10000")
         point_count_row.add_child(self.point_count_label)
-        point_cloud_tab.add_child(point_count_row)
-
-        # --- Coordinate Frame tab
-        coord_frame_tab = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
-        coord_frame_tab.add_child(gui.Label("Coordinate frame uses the Size slider below."))
-
-        self.geom_type_tabs.add_tab("Point Cloud", point_cloud_tab)
-        self.geom_type_tabs.add_tab("Coordinate Frame", coord_frame_tab)
-        
-
-        generation_group.add_child(self.geom_type_tabs)
-        generation_group.add_fixed(10)
-
-        # Common controls (apply to the selected tab/type)
-        generate_row = gui.Horiz(0.25 * em)
-        generate_label = gui.Label('Generate')
-        generate_row.add_child(generate_label)
-        self.generate_button = gui.Button("Generate / Update Geometry")
-        generate_row.add_child(self.generate_button)
-        generation_group.add_child(generate_row)
-        generation_group.add_fixed(10)
+        point_cloud_group.add_child(point_count_row)
+        point_cloud_group.add_fixed(10)
 
         size_row = gui.Horiz(0.25 * em)
-        size_label = gui.Label("Geometry Size")
+        size_label = gui.Label("Point Cloud Size")
         size_row.add_child(size_label)
         self.size_slider = gui.Slider(gui.Slider.DOUBLE)
         self.size_slider.set_limits(0.1, 5.0)
@@ -90,9 +66,17 @@ class SettingsPanel:
         size_row.add_child(self.size_slider)
         self.size_label = gui.Label("1.0")
         size_row.add_child(self.size_label)
-        generation_group.add_child(size_row)
+        point_cloud_group.add_child(size_row)
+        point_cloud_group.add_fixed(10)
 
-        self.widget.add_child(generation_group)
+        generate_row = gui.Horiz(0.25 * em)
+        generate_label = gui.Label("Generate")
+        generate_row.add_child(generate_label)
+        self.generate_button = gui.Button("Generate / Update Point Cloud")
+        generate_row.add_child(self.generate_button)
+        point_cloud_group.add_child(generate_row)
+
+        self.widget.add_child(point_cloud_group)
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)        
 
@@ -141,7 +125,7 @@ class SettingsPanel:
 
         update_cameras_row = gui.Horiz(0.25 * em)
         update_cameras_row.add_child(gui.Label("Update"))
-        self.update_cameras_button = gui.Button("Generate / Update Cameras")
+        self.update_cameras_button = gui.Button("Add Camera")
         update_cameras_row.add_child(self.update_cameras_button)
         cameras_group.add_child(update_cameras_row)
 
@@ -181,13 +165,6 @@ class SettingsPanel:
             self.selected_capture_file_edit.text_value = path
         else:
             self.selected_capture_file_edit.text_value = ""
-
-    def get_generation_geometry_type(self) -> str:
-        """Returns one of: 'point_cloud', 'coordinate_frame' based on the selected tab."""
-        idx = getattr(self.geom_type_tabs, "selected_tab_index", 0)
-        if idx == 0:
-            return "point_cloud"
-        return "coordinate_frame"
 
     def upsert_geometry_toggle(
         self,

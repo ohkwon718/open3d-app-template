@@ -45,7 +45,7 @@ class MainWindow:
         self.point_count = 10000
         self.geometry_size = 1.0
         self.camera_scale = 1.0
-        self.geometry_type = "point_cloud"
+        self._camera_instance_counter = 0
         self.selected_view_path = None
         self.selected_image_path = None
         
@@ -85,7 +85,8 @@ class MainWindow:
         self.scene_view.update_geometry(pcd, name="main_geometry")
         self._register_geometry_toggle("main_geometry", "Point Cloud")
 
-        axis = create_coordinate_frame(size=self.geometry_size)
+        # Axis is fixed-size for simplicity (no UI for axis scale).
+        axis = create_coordinate_frame(size=1.0)
         self.scene_view.update_geometry(axis, name="axis")
         self._register_geometry_toggle("axis", "Axis")
         self.scene_view.fit_camera_to_geometry(pcd)
@@ -125,24 +126,14 @@ class MainWindow:
 
 
     def on_generate_clicked(self):
-        # Geometry type is selected via tabs in the panel.
-        self.geometry_type = self.settings_panel.get_generation_geometry_type()
-        if self.geometry_type == "point_cloud":
-            points, colors = generate_point_cloud_data(
-                count=self.point_count,
-                size=self.geometry_size
-            )
-            geometry = create_point_cloud(points, colors)
-            self.scene_view.update_geometry(geometry, name="main_geometry")
-            self._register_geometry_toggle("main_geometry", "Point Cloud")
-            # Keep axis visible; only update its scale when size changes.
-            axis = create_coordinate_frame(size=self.geometry_size)
-            self.scene_view.update_geometry(axis, name="axis")
-            self._register_geometry_toggle("axis", "Axis")
-        elif self.geometry_type == "coordinate_frame":
-            geometry = create_coordinate_frame(size=self.geometry_size)
-            self.scene_view.update_geometry(geometry, name="axis")
-            self._register_geometry_toggle("axis", "Axis")
+        # Generate / update the point cloud only.
+        points, colors = generate_point_cloud_data(
+            count=self.point_count,
+            size=self.geometry_size,
+        )
+        geometry = create_point_cloud(points, colors)
+        self.scene_view.update_geometry(geometry, name="main_geometry")
+        self._register_geometry_toggle("main_geometry", "Point Cloud")
 
 
     def on_point_count_changed(self, value):
@@ -159,7 +150,7 @@ class MainWindow:
         self.settings_panel.set_camera_scale_label(self.camera_scale)
 
     def on_update_cameras_clicked(self):
-        # Use selected view and image files
+        # Add a new camera visualization (each click appends a new numbered camera).
         if not (self.selected_view_path and os.path.exists(self.selected_view_path)):
             return
 
@@ -184,22 +175,19 @@ class MainWindow:
             O3DVisualizer=True,
         )
 
-        # Update (not remove/add) so hidden state stays hidden if user unchecked it.
+        self._camera_instance_counter += 1
+        idx = self._camera_instance_counter
+        frustum_name = f"camera_frustum_{idx}"
+        image_name = f"camera_image_{idx}"
+
+        # Use update_geometry so re-clicking after hiding keeps hidden state hidden,
+        # and the registry stays consistent.
         if len(geometries) > 0:
-            self.scene_view.update_geometry(geometries[0], name="camera_frustum")
-            self._register_geometry_toggle("camera_frustum", "Camera Frustum")
+            self.scene_view.update_geometry(geometries[0], name=frustum_name)
+            self._register_geometry_toggle(frustum_name, f"Camera {idx} Frustum")
         if len(geometries) > 1:
-            self.scene_view.update_geometry(geometries[1], name="camera_image")
-            self._register_geometry_toggle("camera_image", "Camera Image")
-
-
-    def on_geometry_type_changed(self, text: str, index: int):
-        if index == 0:
-            self.geometry_type = "point_cloud"
-        elif index == 1:
-            self.geometry_type = "coordinate_frame"
-        else:
-            self.geometry_type = "cameras"
+            self.scene_view.update_geometry(geometries[1], name=image_name)
+            self._register_geometry_toggle(image_name, f"Camera {idx} Image")
 
 
     def on_save_screenshot(self):
