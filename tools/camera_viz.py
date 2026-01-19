@@ -27,6 +27,8 @@ def create_camera_geometry(intrinsic: o3d.camera.PinholeCameraIntrinsic, extrins
         rectangle = o3d.geometry.TriangleMesh.create_box(width=1, height=1, depth=0.1, create_uv_map=True, map_texture_to_each_face=True)
         rectangle.triangles = o3d.utility.Vector3iVector([[0, 1, 2], [0, 2, 3]])
         rectangle.vertices = o3d.utility.Vector3dVector(np.array(cam_lineset.points)[1:])
+        # We overwrite vertices/triangles; regenerate normals so lit shaders don't complain.
+        rectangle.compute_vertex_normals()
 
         rectangle.triangle_material_ids = o3d.utility.IntVector(np.zeros(2, dtype=np.int32))
         if O3DVisualizer:

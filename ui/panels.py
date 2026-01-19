@@ -10,6 +10,7 @@ class SettingsPanel:
         self.widget = gui.Vert(0, gui.Margins(0.5 * em, 0.25 * em, 0.25 * em, 0.25 * em))
         self.widget.add_fixed(separation_height)
         
+        ######################### View group #########################
         view_group = gui.CollapsableVert("View", 0.25 * em, gui.Margins(em, 0, 0, 0))
         screenshot_row = gui.Horiz(0.25 * em)
         screenshot_label = gui.Label('Screenshot')
@@ -41,27 +42,14 @@ class SettingsPanel:
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)
         
+        ######################### Generation group #########################
         generation_group = gui.CollapsableVert("Generation", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        geom_type_row = gui.Horiz(0.25 * em)
-        geom_type_label = gui.Label("Geometry Type")
-        geom_type_row.add_child(geom_type_label)
-        self.geom_type_combo = gui.Combobox()
-        self.geom_type_combo.add_item("Point Cloud")
-        self.geom_type_combo.add_item("Coordinate Frame")
-        self.geom_type_combo.add_item("Cameras")
-        self.geom_type_combo.selected_index = 0
-        geom_type_row.add_child(self.geom_type_combo)
-        generation_group.add_child(geom_type_row)
-        generation_group.add_fixed(10)
-        
-        generate_row = gui.Horiz(0.25 * em)
-        generate_label = gui.Label('Generate')
-        generate_row.add_child(generate_label)
-        self.generate_button = gui.Button("Generate / Update Geometry")
-        generate_row.add_child(self.generate_button)
-        generation_group.add_child(generate_row)
-        generation_group.add_fixed(10)
-        
+
+        # Geometry type selection via tabs (instead of combobox).
+        self.geom_type_tabs = gui.TabControl()
+
+        # --- Point Cloud tab (type-specific controls)
+        point_cloud_tab = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
         point_count_row = gui.Horiz(0.25 * em)
         point_count_label = gui.Label("Point Count")
         point_count_row.add_child(point_count_label)
@@ -71,9 +59,28 @@ class SettingsPanel:
         point_count_row.add_child(self.point_count_slider)
         self.point_count_label = gui.Label("10000")
         point_count_row.add_child(self.point_count_label)
-        generation_group.add_child(point_count_row)
-        generation_group.add_fixed(10)
+        point_cloud_tab.add_child(point_count_row)
+
+        # --- Coordinate Frame tab
+        coord_frame_tab = gui.Vert(0.25 * em, gui.Margins(0, 0, 0, 0))
+        coord_frame_tab.add_child(gui.Label("Coordinate frame uses the Size slider below."))
+
+        self.geom_type_tabs.add_tab("Point Cloud", point_cloud_tab)
+        self.geom_type_tabs.add_tab("Coordinate Frame", coord_frame_tab)
         
+
+        generation_group.add_child(self.geom_type_tabs)
+        generation_group.add_fixed(10)
+
+        # Common controls (apply to the selected tab/type)
+        generate_row = gui.Horiz(0.25 * em)
+        generate_label = gui.Label('Generate')
+        generate_row.add_child(generate_label)
+        self.generate_button = gui.Button("Generate / Update Geometry")
+        generate_row.add_child(self.generate_button)
+        generation_group.add_child(generate_row)
+        generation_group.add_fixed(10)
+
         size_row = gui.Horiz(0.25 * em)
         size_label = gui.Label("Geometry Size")
         size_row.add_child(size_label)
@@ -84,8 +91,16 @@ class SettingsPanel:
         self.size_label = gui.Label("1.0")
         size_row.add_child(self.size_label)
         generation_group.add_child(size_row)
-        generation_group.add_fixed(10)
-        
+
+        self.widget.add_child(generation_group)
+        self.widget.add_fixed(separation_height)
+        self.widget.add_fixed(10)        
+
+        ######################### Cameras group #########################
+        cameras_group = gui.CollapsableVert("Cameras", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        cameras_group.add_child(gui.Label("Load a view (required) and an optional capture image."))
+        cameras_group.add_fixed(6)
+
         # Camera file pickers (view + capture), styled as: label + text field + "..."
         view_file_row = gui.Horiz()
         view_file_row.add_child(gui.Label("View file"))
@@ -97,8 +112,8 @@ class SettingsPanel:
         self.load_view_button.horizontal_padding_em = 0.5
         self.load_view_button.vertical_padding_em = 0
         view_file_row.add_child(self.load_view_button)
-        generation_group.add_child(view_file_row)
-        generation_group.add_fixed(6)
+        cameras_group.add_child(view_file_row)
+        cameras_group.add_fixed(6)
 
         capture_file_row = gui.Horiz()
         capture_file_row.add_child(gui.Label("Capture file"))
@@ -110,10 +125,31 @@ class SettingsPanel:
         self.load_capture_button.horizontal_padding_em = 0.5
         self.load_capture_button.vertical_padding_em = 0
         capture_file_row.add_child(self.load_capture_button)
-        generation_group.add_child(capture_file_row)
-        self.widget.add_child(generation_group)
+        cameras_group.add_child(capture_file_row)
+        cameras_group.add_fixed(10)
+
+        camera_scale_row = gui.Horiz(0.25 * em)
+        camera_scale_row.add_child(gui.Label("Camera Scale"))
+        self.camera_scale_slider = gui.Slider(gui.Slider.DOUBLE)
+        self.camera_scale_slider.set_limits(0.1, 5.0)
+        self.camera_scale_slider.double_value = 1.0
+        camera_scale_row.add_child(self.camera_scale_slider)
+        self.camera_scale_label = gui.Label("1.0")
+        camera_scale_row.add_child(self.camera_scale_label)
+        cameras_group.add_child(camera_scale_row)
+        cameras_group.add_fixed(10)
+
+        update_cameras_row = gui.Horiz(0.25 * em)
+        update_cameras_row.add_child(gui.Label("Update"))
+        self.update_cameras_button = gui.Button("Generate / Update Cameras")
+        update_cameras_row.add_child(self.update_cameras_button)
+        cameras_group.add_child(update_cameras_row)
+
+        self.widget.add_child(cameras_group)
+        self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)
         
+        ######################### Geometries group #########################
         geometries_group = gui.CollapsableVert("Geometries", 0.25 * em, gui.Margins(em, 0, 0, 0))
         self.geometry_tree_view = gui.TreeView()
         # NOTE: TreeView uses an internal root item; we attach our items under it.
@@ -131,6 +167,9 @@ class SettingsPanel:
     def set_size_label(self, value: float):
         self.size_label.text = f"{value:.2f}"
 
+    def set_camera_scale_label(self, value: float):
+        self.camera_scale_label.text = f"{value:.2f}"
+
     def set_selected_view_file(self, path: str | None):
         if path:
             self.selected_view_file_edit.text_value = path
@@ -142,6 +181,13 @@ class SettingsPanel:
             self.selected_capture_file_edit.text_value = path
         else:
             self.selected_capture_file_edit.text_value = ""
+
+    def get_generation_geometry_type(self) -> str:
+        """Returns one of: 'point_cloud', 'coordinate_frame' based on the selected tab."""
+        idx = getattr(self.geom_type_tabs, "selected_tab_index", 0)
+        if idx == 0:
+            return "point_cloud"
+        return "coordinate_frame"
 
     def upsert_geometry_toggle(
         self,

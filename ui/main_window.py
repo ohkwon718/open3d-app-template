@@ -44,6 +44,7 @@ class MainWindow:
         # State
         self.point_count = 10000
         self.geometry_size = 1.0
+        self.camera_scale = 1.0
         self.geometry_type = "point_cloud"
         self.selected_view_path = None
         self.selected_image_path = None
@@ -111,17 +112,21 @@ class MainWindow:
         self.settings_panel.generate_button.set_on_clicked(self.on_generate_clicked)
         self.settings_panel.point_count_slider.set_on_value_changed(self.on_point_count_changed)
         self.settings_panel.size_slider.set_on_value_changed(self.on_size_changed)
-        self.settings_panel.geom_type_combo.set_on_selection_changed(self.on_geometry_type_changed)
         self.settings_panel.load_view_button.set_on_clicked(self.on_load_view)
         self.settings_panel.load_capture_button.set_on_clicked(self.on_load_capture)
+        self.settings_panel.camera_scale_slider.set_on_value_changed(self.on_camera_scale_changed)
+        self.settings_panel.update_cameras_button.set_on_clicked(self.on_update_cameras_clicked)
 
 
     def _update_ui_from_state(self):
         self.settings_panel.set_point_count_label(self.point_count)
         self.settings_panel.set_size_label(self.geometry_size)
+        self.settings_panel.set_camera_scale_label(self.camera_scale)
 
 
     def on_generate_clicked(self):
+        # Geometry type is selected via tabs in the panel.
+        self.geometry_type = self.settings_panel.get_generation_geometry_type()
         if self.geometry_type == "point_cloud":
             points, colors = generate_point_cloud_data(
                 count=self.point_count,
@@ -138,45 +143,6 @@ class MainWindow:
             geometry = create_coordinate_frame(size=self.geometry_size)
             self.scene_view.update_geometry(geometry, name="axis")
             self._register_geometry_toggle("axis", "Axis")
-        elif self.geometry_type == "cameras":
-            # Use selected view and image files
-            if self.selected_view_path and os.path.exists(self.selected_view_path):
-                # Load camera data from view file
-                params = load_view_state(self.selected_view_path)
-                model_matrix = np.array(params['model_matrix'])
-                width = params['width']
-                height = params['height']
-                
-                # Calculate intrinsic and extrinsic matrices
-                extrinsic = to_o3d_extrinsic_from_c2w(model_matrix)
-                intrinsic = create_o3d_intrinsic(size=(width, height))
-                
-
-                # Load image if provided
-                img_array = None
-                if self.selected_image_path and os.path.exists(self.selected_image_path):
-                    img_o3d = o3d.io.read_image(self.selected_image_path)
-                    img_array = np.asarray(img_o3d)
-
-                geometries = create_camera_geometry(
-                    intrinsic=intrinsic,
-                    extrinsic=extrinsic,
-                    img=img_array,
-                    scale=self.geometry_size,
-                    O3DVisualizer=True
-                )
-                
-                # Remove existing camera geometries if any
-                self.scene_view.remove_geometry("camera_frustum")
-                self.scene_view.remove_geometry("camera_image")
-                
-                # Add geometries to scene
-                if len(geometries) > 0:
-                    self.scene_view.add_geometry(geometries[0], "camera_frustum")
-                    self._register_geometry_toggle("camera_frustum", "Camera Frustum")
-                if len(geometries) > 1:
-                    self.scene_view.add_geometry(geometries[1], "camera_image")
-                    self._register_geometry_toggle("camera_image", "Camera Image")
 
 
     def on_point_count_changed(self, value):
@@ -187,6 +153,44 @@ class MainWindow:
     def on_size_changed(self, value: float):
         self.geometry_size = self.settings_panel.size_slider.double_value
         self.settings_panel.set_size_label(self.geometry_size)
+
+    def on_camera_scale_changed(self, value: float):
+        self.camera_scale = self.settings_panel.camera_scale_slider.double_value
+        self.settings_panel.set_camera_scale_label(self.camera_scale)
+
+    def on_update_cameras_clicked(self):
+        # Use selected view and image files
+        if not (self.selected_view_path and os.path.exists(self.selected_view_path)):
+            return
+
+        params = load_view_state(self.selected_view_path)
+        model_matrix = np.array(params["model_matrix"])
+        width = params["width"]
+        height = params["height"]
+
+        extrinsic = to_o3d_extrinsic_from_c2w(model_matrix)
+        intrinsic = create_o3d_intrinsic(size=(width, height))
+
+        img_array = None
+        if self.selected_image_path and os.path.exists(self.selected_image_path):
+            img_o3d = o3d.io.read_image(self.selected_image_path)
+            img_array = np.asarray(img_o3d)
+
+        geometries = create_camera_geometry(
+            intrinsic=intrinsic,
+            extrinsic=extrinsic,
+            img=img_array,
+            scale=self.camera_scale,
+            O3DVisualizer=True,
+        )
+
+        # Update (not remove/add) so hidden state stays hidden if user unchecked it.
+        if len(geometries) > 0:
+            self.scene_view.update_geometry(geometries[0], name="camera_frustum")
+            self._register_geometry_toggle("camera_frustum", "Camera Frustum")
+        if len(geometries) > 1:
+            self.scene_view.update_geometry(geometries[1], name="camera_image")
+            self._register_geometry_toggle("camera_image", "Camera Image")
 
 
     def on_geometry_type_changed(self, text: str, index: int):

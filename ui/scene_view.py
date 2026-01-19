@@ -43,6 +43,10 @@ class SceneWidget:
         if isinstance(geometry, o3d.geometry.PointCloud):
             material.shader = "defaultUnlit"
             material.point_size = 3.0
+        elif isinstance(geometry, o3d.geometry.LineSet):
+            # Camera frustums etc.
+            material.shader = "unlitLine"
+            material.line_width = 2.0
         elif isinstance(geometry, o3d.geometry.TriangleMesh) and geometry.has_vertex_colors():
             material.shader = "defaultUnlit"
         return material
