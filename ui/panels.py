@@ -8,6 +8,13 @@ class SettingsPanel:
         em = window.theme.font_size
         self._em = em
         separation_height = int(round(0.5 * em))
+
+        def _style_button(btn: gui.Button):
+            # Keep all buttons visually consistent (especially height).
+            btn.horizontal_padding_em = 0.5
+            btn.vertical_padding_em = 0
+            return btn
+
         self.widget = gui.Vert(0, gui.Margins(0.5 * em, 0.25 * em, 0.25 * em, 0.25 * em))
         self.widget.add_fixed(separation_height)
         
@@ -16,9 +23,7 @@ class SettingsPanel:
         screenshot_row = gui.Horiz(0.25 * em)
         screenshot_label = gui.Label('Screenshot')
         screenshot_row.add_child(screenshot_label)
-        self.screenshot_button = gui.Button("Save")
-        self.screenshot_button.horizontal_padding_em = 0.5
-        self.screenshot_button.vertical_padding_em = 0
+        self.screenshot_button = _style_button(gui.Button("Save"))
         screenshot_row.add_child(self.screenshot_button)
         view_group.add_child(screenshot_row)
         
@@ -26,17 +31,11 @@ class SettingsPanel:
         view_group.add_child(camera_label)
         
         camera_row = gui.Horiz(0.25 * em)
-        self.save_camera_button = gui.Button("Save")
-        self.save_camera_button.horizontal_padding_em = 0.5
-        self.save_camera_button.vertical_padding_em = 0
+        self.save_camera_button = _style_button(gui.Button("Save"))
         camera_row.add_child(self.save_camera_button)
-        self.load_camera_button = gui.Button("Load")
-        self.load_camera_button.horizontal_padding_em = 0.5
-        self.load_camera_button.vertical_padding_em = 0
+        self.load_camera_button = _style_button(gui.Button("Load"))
         camera_row.add_child(self.load_camera_button)
-        self.load_latest_camera_button = gui.Button("Load Latest")
-        self.load_latest_camera_button.horizontal_padding_em = 0.5
-        self.load_latest_camera_button.vertical_padding_em = 0
+        self.load_latest_camera_button = _style_button(gui.Button("Load Latest"))
         camera_row.add_child(self.load_latest_camera_button)
         view_group.add_child(camera_row)
         self.widget.add_child(view_group)
@@ -53,8 +52,6 @@ class SettingsPanel:
         self.point_count_slider.set_limits(100, 10000)
         self.point_count_slider.int_value = 10000
         point_count_row.add_child(self.point_count_slider)
-        self.point_count_label = gui.Label("10000")
-        point_count_row.add_child(self.point_count_label)
         point_cloud_group.add_child(point_count_row)
         point_cloud_group.add_fixed(10)
 
@@ -65,15 +62,13 @@ class SettingsPanel:
         self.size_slider.set_limits(0.1, 5.0)
         self.size_slider.double_value = 1.0
         size_row.add_child(self.size_slider)
-        self.size_label = gui.Label("1.0")
-        size_row.add_child(self.size_label)
         point_cloud_group.add_child(size_row)
         point_cloud_group.add_fixed(10)
 
         generate_row = gui.Horiz(0.25 * em)
         generate_label = gui.Label("Generate")
         generate_row.add_child(generate_label)
-        self.generate_button = gui.Button("Generate / Update Point Cloud")
+        self.generate_button = _style_button(gui.Button("Generate / Update Point Cloud"))
         generate_row.add_child(self.generate_button)
         point_cloud_group.add_child(generate_row)
 
@@ -83,19 +78,31 @@ class SettingsPanel:
 
         ######################### Cameras group #########################
         cameras_group = gui.CollapsableVert("Cameras", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        cameras_group.add_child(gui.Label("Load a view (required) and an optional capture image."))
+        
+        camera_scale_row = gui.Horiz(0.25 * em)
+        camera_scale_row.add_child(gui.Label("Camera Scale"))
+        self.camera_scale_slider = gui.Slider(gui.Slider.DOUBLE)
+        self.camera_scale_slider.set_limits(0.1, 5.0)
+        self.camera_scale_slider.double_value = 1.0
+        camera_scale_row.add_child(self.camera_scale_slider)
+        cameras_group.add_child(camera_scale_row)
+        cameras_group.add_fixed(10)
+
+        self.add_camera_from_scene_button = _style_button(gui.Button("Add from scene"))
+        cameras_group.add_child(self.add_camera_from_scene_button)
         cameras_group.add_fixed(6)
 
-        # Camera file pickers (view + capture), styled as: label + text field + "..."
+        self.update_cameras_button = _style_button(gui.Button("Add from files"))
+        cameras_group.add_child(self.update_cameras_button)
+        cameras_group.add_fixed(10)
+
         view_file_row = gui.Horiz()
         view_file_row.add_child(gui.Label("View file"))
         self.selected_view_file_edit = gui.TextEdit()
         self.selected_view_file_edit.text_value = ""
         view_file_row.add_child(self.selected_view_file_edit)
         view_file_row.add_fixed(0.25 * em)
-        self.load_view_button = gui.Button("...")
-        self.load_view_button.horizontal_padding_em = 0.5
-        self.load_view_button.vertical_padding_em = 0
+        self.load_view_button = _style_button(gui.Button("..."))
         view_file_row.add_child(self.load_view_button)
         cameras_group.add_child(view_file_row)
         cameras_group.add_fixed(6)
@@ -106,31 +113,9 @@ class SettingsPanel:
         self.selected_capture_file_edit.text_value = ""
         capture_file_row.add_child(self.selected_capture_file_edit)
         capture_file_row.add_fixed(0.25 * em)
-        self.load_capture_button = gui.Button("...")
-        self.load_capture_button.horizontal_padding_em = 0.5
-        self.load_capture_button.vertical_padding_em = 0
+        self.load_capture_button = _style_button(gui.Button("..."))
         capture_file_row.add_child(self.load_capture_button)
         cameras_group.add_child(capture_file_row)
-        cameras_group.add_fixed(10)
-
-        camera_scale_row = gui.Horiz(0.25 * em)
-        camera_scale_row.add_child(gui.Label("Camera Scale"))
-        self.camera_scale_slider = gui.Slider(gui.Slider.DOUBLE)
-        self.camera_scale_slider.set_limits(0.1, 5.0)
-        self.camera_scale_slider.double_value = 1.0
-        camera_scale_row.add_child(self.camera_scale_slider)
-        self.camera_scale_label = gui.Label("1.0")
-        camera_scale_row.add_child(self.camera_scale_label)
-        cameras_group.add_child(camera_scale_row)
-        cameras_group.add_fixed(10)
-
-        update_cameras_row = gui.Horiz(0.25 * em)
-        update_cameras_row.add_child(gui.Label("Update"))
-        self.update_cameras_button = gui.Button("Add from files")
-        update_cameras_row.add_child(self.update_cameras_button)
-        self.add_camera_from_scene_button = gui.Button("Add from scene")
-        update_cameras_row.add_child(self.add_camera_from_scene_button)
-        cameras_group.add_child(update_cameras_row)
         cameras_group.add_fixed(10)
 
         cameras_group.add_child(gui.Label("Current cameras"))
@@ -141,7 +126,7 @@ class SettingsPanel:
 
         camera_delete_row = gui.Horiz(0.25 * em)
         camera_delete_row.add_child(gui.Label("Delete"))
-        self.delete_selected_camera_button = gui.Button("Delete selected camera")
+        self.delete_selected_camera_button = _style_button(gui.Button("Delete selected camera"))
         camera_delete_row.add_child(self.delete_selected_camera_button)
         cameras_group.add_child(camera_delete_row)
 
@@ -185,15 +170,6 @@ class SettingsPanel:
                 item = args[-1] if args else None
                 self._selected_camera_index = self._camera_tree_item_to_index.get(item, None)
             self.cameras_tree_view.set_on_selection_changed(_on_camera_selection_changed)
-
-    def set_point_count_label(self, value: int):
-        self.point_count_label.text = str(value)
-
-    def set_size_label(self, value: float):
-        self.size_label.text = f"{value:.2f}"
-
-    def set_camera_scale_label(self, value: float):
-        self.camera_scale_label.text = f"{value:.2f}"
 
     def set_selected_view_file(self, path: str | None):
         if path:

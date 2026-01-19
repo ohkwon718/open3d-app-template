@@ -123,9 +123,8 @@ class MainWindow:
 
 
     def _update_ui_from_state(self):
-        self.settings_panel.set_point_count_label(self.point_count)
-        self.settings_panel.set_size_label(self.geometry_size)
-        self.settings_panel.set_camera_scale_label(self.camera_scale)
+        # Sliders show values directly; no extra labels to sync.
+        pass
 
 
     def on_generate_clicked(self):
@@ -141,16 +140,13 @@ class MainWindow:
 
     def on_point_count_changed(self, value):
         self.point_count = self.settings_panel.point_count_slider.int_value
-        self.settings_panel.set_point_count_label(self.point_count)
 
 
     def on_size_changed(self, value: float):
         self.geometry_size = self.settings_panel.size_slider.double_value
-        self.settings_panel.set_size_label(self.geometry_size)
 
     def on_camera_scale_changed(self, value: float):
         self.camera_scale = self.settings_panel.camera_scale_slider.double_value
-        self.settings_panel.set_camera_scale_label(self.camera_scale)
 
     def on_update_cameras_clicked(self):
         # Add a new camera visualization (each click appends a new numbered camera).
