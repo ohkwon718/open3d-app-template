@@ -134,20 +134,29 @@ class SettingsPanel:
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)
         
-        ######################### Geometries group #########################
-        geometries_group = gui.CollapsableVert("Geometries", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        self.geometry_tree_view = gui.TreeView()
+        ######################### Visibility group #########################
+        visibility_group = gui.CollapsableVert("Visibility", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.visibility_tree_view = gui.TreeView()
         # NOTE: TreeView uses an internal root item; we attach our items under it.
-        self._geometry_tree_root = self.geometry_tree_view.get_root_item()
-        geometries_group.add_child(self.geometry_tree_view)
+        self._visibility_tree_root = self.visibility_tree_view.get_root_item()
+        visibility_group.add_child(self.visibility_tree_view)
+        visibility_group.add_fixed(6)
 
-        self.widget.add_child(geometries_group)
+        cameras_visibility_row = gui.Horiz(0.25 * em)
+        cameras_visibility_row.add_child(gui.Label("Cameras"))
+        self.show_all_cameras_button = _style_button(gui.Button("Show all"))
+        cameras_visibility_row.add_child(self.show_all_cameras_button)
+        self.hide_all_cameras_button = _style_button(gui.Button("Hide all"))
+        cameras_visibility_row.add_child(self.hide_all_cameras_button)
+        visibility_group.add_child(cameras_visibility_row)
+
+        self.widget.add_child(visibility_group)
         self.widget.add_fixed(10)
 
-        self._geometry_tree_items: dict[str, object] = {}
-        self._geometry_tree_cells: dict[str, object] = {}
-        self._geometry_tree_item_to_name: dict[object, str] = {}
-        self._selected_geometry_name: str | None = None
+        self._visibility_tree_items: dict[str, object] = {}
+        self._visibility_tree_cells: dict[str, object] = {}
+        self._visibility_tree_item_to_name: dict[object, str] = {}
+        self._selected_visibility_name: str | None = None
 
         self._camera_tree_items: dict[int, object] = {}
         self._camera_tree_item_to_index: dict[object, int] = {}
@@ -158,12 +167,12 @@ class SettingsPanel:
         self._on_delete_camera_requested = None
 
         # Track selection if supported by this Open3D build.
-        if hasattr(self.geometry_tree_view, "set_on_selection_changed"):
+        if hasattr(self.visibility_tree_view, "set_on_selection_changed"):
             def _on_selection_changed(*args):
                 # Different Open3D versions pass different args; we rely on our mapping.
                 item = args[-1] if args else None
-                self._selected_geometry_name = self._geometry_tree_item_to_name.get(item, None)
-            self.geometry_tree_view.set_on_selection_changed(_on_selection_changed)
+                self._selected_visibility_name = self._visibility_tree_item_to_name.get(item, None)
+            self.visibility_tree_view.set_on_selection_changed(_on_selection_changed)
 
         if hasattr(self.cameras_tree_view, "set_on_selection_changed"):
             def _on_camera_selection_changed(*args):
@@ -203,10 +212,13 @@ class SettingsPanel:
         self._on_delete_camera_requested(idx)
 
     def get_selected_geometry_name(self) -> str | None:
-        return self._selected_geometry_name
+        return self._selected_visibility_name
 
     def get_selected_camera_index(self) -> int | None:
         return self._selected_camera_index
+
+    def list_visibility_names(self) -> list[str]:
+        return list(self._visibility_tree_items.keys())
 
     def upsert_camera_item(self, idx: int, label: str | None = None):
         if label is None:
@@ -241,18 +253,18 @@ class SettingsPanel:
 
     def remove_geometry_toggle(self, name: str):
         # Remove a row from the TreeView and internal mappings.
-        item = self._geometry_tree_items.get(name)
-        if item is not None and hasattr(self.geometry_tree_view, "remove_item"):
+        item = self._visibility_tree_items.get(name)
+        if item is not None and hasattr(self.visibility_tree_view, "remove_item"):
             try:
-                self.geometry_tree_view.remove_item(item)
+                self.visibility_tree_view.remove_item(item)
             except Exception:
                 pass
-        self._geometry_tree_items.pop(name, None)
-        self._geometry_tree_cells.pop(name, None)
+        self._visibility_tree_items.pop(name, None)
+        self._visibility_tree_cells.pop(name, None)
         if item is not None:
-            self._geometry_tree_item_to_name.pop(item, None)
-        if self._selected_geometry_name == name:
-            self._selected_geometry_name = None
+            self._visibility_tree_item_to_name.pop(item, None)
+        if self._selected_visibility_name == name:
+            self._selected_visibility_name = None
 
     def upsert_geometry_toggle(
         self,
@@ -267,7 +279,7 @@ class SettingsPanel:
         """
         # Preferred path: Open3D provides a tree cell with a built-in checkbox + label.
         if hasattr(gui, "CheckableTextTreeCell"):
-            cell = self._geometry_tree_cells.get(name)
+            cell = self._visibility_tree_cells.get(name)
             if cell is None:
                 # Open3D variants differ slightly:
                 # - Some require the callback in the constructor: (text, checked, on_checked)
@@ -281,15 +293,15 @@ class SettingsPanel:
                     elif hasattr(cell, "set_on_check"):
                         cell.set_on_check(on_checked)
 
-                item = self.geometry_tree_view.add_item(self._geometry_tree_root, cell)
-                self._geometry_tree_items[name] = item
-                self._geometry_tree_cells[name] = cell
-                self._geometry_tree_item_to_name[item] = name
+                item = self.visibility_tree_view.add_item(self._visibility_tree_root, cell)
+                self._visibility_tree_items[name] = item
+                self._visibility_tree_cells[name] = cell
+                self._visibility_tree_item_to_name[item] = name
             else:
                 if hasattr(cell, "text"):
                     cell.text = label
-                if hasattr(cell, "checked"):
-                    cell.checked = bool(checked)
+                # Note: we don't try to programmatically sync checkmarks. The checkmark
+                # reflects user interaction; bulk show/hide buttons affect scene only.
 
                 if hasattr(cell, "set_on_checked"):
                     cell.set_on_checked(on_checked)

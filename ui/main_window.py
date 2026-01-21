@@ -120,6 +120,8 @@ class MainWindow:
         self.settings_panel.add_camera_from_scene_button.set_on_clicked(self.on_add_camera_from_scene_clicked)
         self.settings_panel.delete_selected_camera_button.set_on_clicked(self.on_delete_selected_camera_clicked)
         self.settings_panel.set_on_delete_camera_requested(self.on_delete_camera_requested)
+        self.settings_panel.show_all_cameras_button.set_on_clicked(self.on_show_all_cameras_clicked)
+        self.settings_panel.hide_all_cameras_button.set_on_clicked(self.on_hide_all_cameras_clicked)
 
 
     def _update_ui_from_state(self):
@@ -147,6 +149,21 @@ class MainWindow:
 
     def on_camera_scale_changed(self, value: float):
         self.camera_scale = self.settings_panel.camera_scale_slider.double_value
+
+    def _is_camera_geometry_name(self, name: str) -> bool:
+        return name.startswith("camera_frustum_") or name.startswith("camera_image_")
+
+    def _set_all_cameras_visible(self, visible: bool):
+        for name in self.settings_panel.list_visibility_names():
+            if not self._is_camera_geometry_name(name):
+                continue
+            self.scene_view.set_geometry_visible(name, visible)
+
+    def on_show_all_cameras_clicked(self):
+        self._set_all_cameras_visible(True)
+
+    def on_hide_all_cameras_clicked(self):
+        self._set_all_cameras_visible(False)
 
     def on_update_cameras_clicked(self):
         # Add a new camera visualization (each click appends a new numbered camera).
