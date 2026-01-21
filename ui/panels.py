@@ -129,6 +129,13 @@ class SettingsPanel:
         self.delete_selected_camera_button = _style_button(gui.Button("Delete selected camera"))
         camera_delete_row.add_child(self.delete_selected_camera_button)
         cameras_group.add_child(camera_delete_row)
+        cameras_group.add_fixed(6)
+
+        export_row = gui.Horiz(0.25 * em)
+        export_row.add_child(gui.Label("Export"))
+        self.export_camera_set_button = _style_button(gui.Button("Export camera set"))
+        export_row.add_child(self.export_camera_set_button)
+        cameras_group.add_child(export_row)
 
         self.widget.add_child(cameras_group)
         self.widget.add_fixed(separation_height)
@@ -250,6 +257,9 @@ class SettingsPanel:
             self._camera_tree_item_to_index.pop(item, None)
         if self._selected_camera_index == idx:
             self._selected_camera_index = None
+
+    def list_camera_indices(self) -> list[int]:
+        return sorted(self._camera_tree_items.keys())
 
     def remove_geometry_toggle(self, name: str):
         # Remove a row from the TreeView and internal mappings.

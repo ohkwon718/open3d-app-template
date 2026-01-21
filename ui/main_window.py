@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import numpy as np
 from datetime import datetime
 import open3d as o3d
@@ -46,6 +47,7 @@ class MainWindow:
         self.geometry_size = 1.0
         self.camera_scale = 1.0
         self._camera_instance_counter = 0
+        self._camera_records: dict[int, dict] = {}
         self.selected_view_path = None
         self.selected_image_path = None
         
@@ -88,6 +90,8 @@ class MainWindow:
         # Axis is fixed-size for simplicity (no UI for axis scale).
         axis = create_coordinate_frame(size=1.0)
         self.scene_view.update_geometry(axis, name="axis")
+        # Start with axis hidden (checkbox unchecked by default).
+        self.scene_view.set_geometry_visible("axis", False)
         self._register_geometry_toggle("axis", "Axis")
         self.scene_view.fit_camera_to_geometry(pcd)
 
@@ -122,6 +126,7 @@ class MainWindow:
         self.settings_panel.set_on_delete_camera_requested(self.on_delete_camera_requested)
         self.settings_panel.show_all_cameras_button.set_on_clicked(self.on_show_all_cameras_clicked)
         self.settings_panel.hide_all_cameras_button.set_on_clicked(self.on_hide_all_cameras_clicked)
+        self.settings_panel.export_camera_set_button.set_on_clicked(self.on_export_camera_set_clicked)
 
 
     def _update_ui_from_state(self):
@@ -196,6 +201,25 @@ class MainWindow:
         frustum_name = f"camera_frustum_{idx}"
         image_name = f"camera_image_{idx}"
         self.settings_panel.upsert_camera_item(idx)
+        self._camera_records[idx] = {
+            "source": "files",
+            "width": int(width),
+            "height": int(height),
+            "model_matrix": model_matrix.tolist(),
+            "c2w": model_matrix.tolist(),
+            "extrinsic": extrinsic.tolist(),
+            "intrinsic": {
+                "width": int(width),
+                "height": int(height),
+                "fx": float(intrinsic.get_focal_length()[0]),
+                "fy": float(intrinsic.get_focal_length()[1]),
+                "cx": float(intrinsic.get_principal_point()[0]),
+                "cy": float(intrinsic.get_principal_point()[1]),
+                "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
+            },
+            "image_path": self.selected_image_path if (self.selected_image_path and os.path.exists(self.selected_image_path)) else None,
+            "image_array": None,
+        }
 
         # Use update_geometry so re-clicking after hiding keeps hidden state hidden,
         # and the registry stays consistent.
@@ -240,6 +264,25 @@ class MainWindow:
             image_name = f"camera_image_{idx}"
 
             self.settings_panel.upsert_camera_item(idx, label=f"Camera {idx} (scene)")
+            self._camera_records[idx] = {
+                "source": "scene",
+                "width": int(width),
+                "height": int(height),
+                "model_matrix": model_matrix.tolist(),
+                "c2w": model_matrix.tolist(),
+                "extrinsic": extrinsic.tolist(),
+                "intrinsic": {
+                    "width": int(width),
+                    "height": int(height),
+                    "fx": float(intrinsic.get_focal_length()[0]),
+                    "fy": float(intrinsic.get_focal_length()[1]),
+                    "cx": float(intrinsic.get_principal_point()[0]),
+                    "cy": float(intrinsic.get_principal_point()[1]),
+                    "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
+                },
+                "image_path": None,
+                "image_array": img_array,
+            }
 
             if len(geometries) > 0:
                 self.scene_view.update_geometry(geometries[0], name=frustum_name)
@@ -249,6 +292,71 @@ class MainWindow:
                 self._register_geometry_toggle(image_name, f"Camera {idx} Image")
 
         self.scene_view.capture_image(on_image)
+
+    def on_export_camera_set_clicked(self):
+        """
+        Prototype exporter:
+        export/camera_sets/<timestamp>/
+          cameras.json
+          images/cam_###.png
+        """
+        indices = self.settings_panel.list_camera_indices()
+        if not indices:
+            return
+
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        out_dir = os.path.abspath(os.path.join("export", "camera_sets", ts))
+        images_dir = os.path.join(out_dir, "images")
+        os.makedirs(images_dir, exist_ok=True)
+
+        cameras_out = []
+        for idx in indices:
+            rec = self._camera_records.get(idx)
+            if rec is None:
+                continue
+
+            entry = {
+                "id": int(idx),
+                "source": rec.get("source"),
+                "width": rec.get("width"),
+                "height": rec.get("height"),
+                # Keep compatibility with export/views format
+                "model_matrix": rec.get("model_matrix"),
+                # Alias for clarity
+                "c2w": rec.get("c2w"),
+                "extrinsic": rec.get("extrinsic"),
+                "intrinsic": rec.get("intrinsic"),
+            }
+
+            image_rel = None
+            image_path = rec.get("image_path")
+            image_array = rec.get("image_array")
+            out_png = os.path.join(images_dir, f"cam_{idx:03d}.png")
+
+            if image_array is not None:
+                img_o3d = o3d.geometry.Image(image_array)
+                save_image(out_png, img_o3d)
+                image_rel = os.path.relpath(out_png, out_dir)
+            elif image_path and os.path.exists(image_path):
+                img_o3d = o3d.io.read_image(image_path)
+                save_image(out_png, img_o3d)
+                image_rel = os.path.relpath(out_png, out_dir)
+
+            if image_rel is not None:
+                entry["image_file"] = image_rel
+
+            cameras_out.append(entry)
+
+        payload = {
+            "version": 1,
+            "created_at": ts,
+            "root_format": "open3d_gui_view_state",
+            "cameras": cameras_out,
+        }
+
+        json_path = os.path.join(out_dir, "cameras.json")
+        with open(json_path, "w") as f:
+            json.dump(payload, f, indent=2)
 
     def _try_parse_camera_index(self, geometry_name: str) -> int | None:
         if geometry_name.startswith("camera_frustum_"):
@@ -275,6 +383,7 @@ class MainWindow:
         self.settings_panel.remove_geometry_toggle(image_name)
 
         self.settings_panel.remove_camera_item(idx)
+        self._camera_records.pop(idx, None)
 
     def on_delete_selected_camera_clicked(self):
         idx = self.settings_panel.get_selected_camera_index()
