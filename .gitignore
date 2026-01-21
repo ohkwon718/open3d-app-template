@@ -207,7 +207,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Export
-export/screenshots/
-export/views/
-export/camera_sets/
+# Export (keep folder structure, ignore generated outputs)
+export/screenshots/*
+!export/screenshots/.gitkeep
+export/views/*
+!export/views/.gitkeep
+export/camera_sets/*
+!export/camera_sets/.gitkeep
+!.gitkeep
