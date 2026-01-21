@@ -124,17 +124,16 @@ class SettingsPanel:
         cameras_group.add_child(self.cameras_tree_view)
         cameras_group.add_fixed(6)
 
-        camera_delete_row = gui.Horiz(0.25 * em)
-        camera_delete_row.add_child(gui.Label("Delete"))
+        # Keep actions visually consistent: use simple buttons (no extra labels).
         self.delete_selected_camera_button = _style_button(gui.Button("Delete selected camera"))
-        camera_delete_row.add_child(self.delete_selected_camera_button)
-        cameras_group.add_child(camera_delete_row)
+        cameras_group.add_child(self.delete_selected_camera_button)
         cameras_group.add_fixed(6)
 
         export_row = gui.Horiz(0.25 * em)
-        export_row.add_child(gui.Label("Export"))
         self.export_camera_set_button = _style_button(gui.Button("Export camera set"))
         export_row.add_child(self.export_camera_set_button)
+        self.import_camera_set_button = _style_button(gui.Button("Import camera set"))
+        export_row.add_child(self.import_camera_set_button)
         cameras_group.add_child(export_row)
 
         self.widget.add_child(cameras_group)

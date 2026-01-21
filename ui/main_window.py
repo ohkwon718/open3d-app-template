@@ -127,6 +127,7 @@ class MainWindow:
         self.settings_panel.show_all_cameras_button.set_on_clicked(self.on_show_all_cameras_clicked)
         self.settings_panel.hide_all_cameras_button.set_on_clicked(self.on_hide_all_cameras_clicked)
         self.settings_panel.export_camera_set_button.set_on_clicked(self.on_export_camera_set_clicked)
+        self.settings_panel.import_camera_set_button.set_on_clicked(self.on_import_camera_set_clicked)
 
 
     def _update_ui_from_state(self):
@@ -263,7 +264,8 @@ class MainWindow:
             frustum_name = f"camera_frustum_{idx}"
             image_name = f"camera_image_{idx}"
 
-            self.settings_panel.upsert_camera_item(idx, label=f"Camera {idx} (scene)")
+            # Keep naming consistent regardless of source.
+            self.settings_panel.upsert_camera_item(idx)
             self._camera_records[idx] = {
                 "source": "scene",
                 "width": int(width),
@@ -357,6 +359,116 @@ class MainWindow:
         json_path = os.path.join(out_dir, "cameras.json")
         with open(json_path, "w") as f:
             json.dump(payload, f, indent=2)
+
+    def on_import_camera_set_clicked(self):
+        """
+        Import an exported camera set. For robustness, user selects the cameras.json file.
+        Recreates camera frustums + optional image planes and appends them to the current list.
+        """
+        original_cwd = os.getcwd()
+        sets_dir = os.path.abspath(os.path.join("export", "camera_sets"))
+
+        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Import Camera Set (select cameras.json)", self.window.theme)
+        dlg.add_filter(".json", "JSON files")
+        if os.path.exists(sets_dir):
+            dlg.set_path(sets_dir)
+
+        def on_done(path):
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+            if not path or not os.path.exists(path):
+                return
+            try:
+                with open(path, "r") as f:
+                    payload = json.load(f)
+            except Exception:
+                return
+
+            base_dir = os.path.dirname(os.path.abspath(path))
+            cameras = payload.get("cameras", [])
+            if not isinstance(cameras, list):
+                return
+
+            for cam in cameras:
+                try:
+                    width = int(cam.get("width"))
+                    height = int(cam.get("height"))
+                except Exception:
+                    continue
+
+                # Prefer exported matrices; fall back to model_matrix (c2w) if needed.
+                model_matrix = np.array(cam.get("model_matrix") or cam.get("c2w"), dtype=np.float64)
+                extrinsic_list = cam.get("extrinsic")
+                extrinsic = np.array(extrinsic_list, dtype=np.float64) if extrinsic_list is not None else to_o3d_extrinsic_from_c2w(model_matrix)
+
+                intrinsic_dict = cam.get("intrinsic") or {}
+                fx = intrinsic_dict.get("fx")
+                fy = intrinsic_dict.get("fy")
+                cx = intrinsic_dict.get("cx")
+                cy = intrinsic_dict.get("cy")
+                if fx is None or fy is None or cx is None or cy is None:
+                    # Fallback to current helper if missing.
+                    intrinsic = create_o3d_intrinsic(size=(width, height))
+                else:
+                    intrinsic = o3d.camera.PinholeCameraIntrinsic(width, height, float(fx), float(fy), float(cx), float(cy))
+
+                img_array = None
+                image_file = cam.get("image_file")
+                image_path = None
+                if image_file:
+                    image_path = os.path.join(base_dir, image_file)
+                    if os.path.exists(image_path):
+                        img_o3d = o3d.io.read_image(image_path)
+                        img_array = np.asarray(img_o3d)
+
+                geometries = create_camera_geometry(
+                    intrinsic=intrinsic,
+                    extrinsic=extrinsic,
+                    img=img_array,
+                    scale=self.camera_scale,
+                    O3DVisualizer=False,
+                )
+
+                self._camera_instance_counter += 1
+                idx = self._camera_instance_counter
+                frustum_name = f"camera_frustum_{idx}"
+                image_name = f"camera_image_{idx}"
+
+                self.settings_panel.upsert_camera_item(idx)
+                self._camera_records[idx] = {
+                    "source": "import",
+                    "width": int(width),
+                    "height": int(height),
+                    "model_matrix": model_matrix.tolist(),
+                    "c2w": model_matrix.tolist(),
+                    "extrinsic": extrinsic.tolist(),
+                    "intrinsic": {
+                        "width": int(width),
+                        "height": int(height),
+                        "fx": float(intrinsic.get_focal_length()[0]),
+                        "fy": float(intrinsic.get_focal_length()[1]),
+                        "cx": float(intrinsic.get_principal_point()[0]),
+                        "cy": float(intrinsic.get_principal_point()[1]),
+                        "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
+                    },
+                    "image_path": image_path if (image_path and os.path.exists(image_path)) else None,
+                    "image_array": None,
+                }
+
+                if len(geometries) > 0:
+                    self.scene_view.update_geometry(geometries[0], name=frustum_name)
+                    self._register_geometry_toggle(frustum_name, f"Camera {idx} Frustum")
+                if len(geometries) > 1:
+                    self.scene_view.update_geometry(geometries[1], name=image_name)
+                    self._register_geometry_toggle(image_name, f"Camera {idx} Image")
+
+        def on_cancel():
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+
+        dlg.set_on_cancel(on_cancel)
+        dlg.set_on_done(on_done)
+        self.window.show_dialog(dlg)
 
     def _try_parse_camera_index(self, geometry_name: str) -> int | None:
         if geometry_name.startswith("camera_frustum_"):
