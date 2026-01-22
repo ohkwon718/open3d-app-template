@@ -1,6 +1,5 @@
 import os
 import glob
-import json
 import numpy as np
 from datetime import datetime
 import open3d as o3d
@@ -8,10 +7,16 @@ import open3d.visualization.gui as gui
 
 from ui.scene_view import SceneWidget
 from ui.panels import SettingsPanel
-from tools.view_io import save_view_state, load_view_state
+from tools.camera_view_io import save_view_state, load_view_state
 from tools.screenshot import save_image
 from tools.camera_viz import create_camera_geometry, create_o3d_intrinsic
 from tools.camera_math import to_o3d_extrinsic_from_c2w, create_camera_intrinsic_from_size
+from tools.camera_set_io import (
+    export_camera_set,
+    load_camera_set,
+    load_camera_image_array,
+    make_camera_record,
+)
 
 
 def generate_point_cloud_data(count: int = 1000, size: float = 1.0):
@@ -202,25 +207,16 @@ class MainWindow:
         frustum_name = f"camera_frustum_{idx}"
         image_name = f"camera_image_{idx}"
         self.settings_panel.upsert_camera_item(idx)
-        self._camera_records[idx] = {
-            "source": "files",
-            "width": int(width),
-            "height": int(height),
-            "model_matrix": model_matrix.tolist(),
-            "c2w": model_matrix.tolist(),
-            "extrinsic": extrinsic.tolist(),
-            "intrinsic": {
-                "width": int(width),
-                "height": int(height),
-                "fx": float(intrinsic.get_focal_length()[0]),
-                "fy": float(intrinsic.get_focal_length()[1]),
-                "cx": float(intrinsic.get_principal_point()[0]),
-                "cy": float(intrinsic.get_principal_point()[1]),
-                "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
-            },
-            "image_path": self.selected_image_path if (self.selected_image_path and os.path.exists(self.selected_image_path)) else None,
-            "image_array": None,
-        }
+        self._camera_records[idx] = make_camera_record(
+            source="files",
+            width=width,
+            height=height,
+            model_matrix=model_matrix,
+            extrinsic=extrinsic,
+            intrinsic=intrinsic,
+            image_path=self.selected_image_path if (self.selected_image_path and os.path.exists(self.selected_image_path)) else None,
+            image_array=None,
+        )
 
         # Use update_geometry so re-clicking after hiding keeps hidden state hidden,
         # and the registry stays consistent.
@@ -266,25 +262,16 @@ class MainWindow:
 
             # Keep naming consistent regardless of source.
             self.settings_panel.upsert_camera_item(idx)
-            self._camera_records[idx] = {
-                "source": "scene",
-                "width": int(width),
-                "height": int(height),
-                "model_matrix": model_matrix.tolist(),
-                "c2w": model_matrix.tolist(),
-                "extrinsic": extrinsic.tolist(),
-                "intrinsic": {
-                    "width": int(width),
-                    "height": int(height),
-                    "fx": float(intrinsic.get_focal_length()[0]),
-                    "fy": float(intrinsic.get_focal_length()[1]),
-                    "cx": float(intrinsic.get_principal_point()[0]),
-                    "cy": float(intrinsic.get_principal_point()[1]),
-                    "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
-                },
-                "image_path": None,
-                "image_array": img_array,
-            }
+            self._camera_records[idx] = make_camera_record(
+                source="scene",
+                width=width,
+                height=height,
+                model_matrix=model_matrix,
+                extrinsic=extrinsic,
+                intrinsic=intrinsic,
+                image_path=None,
+                image_array=img_array,
+            )
 
             if len(geometries) > 0:
                 self.scene_view.update_geometry(geometries[0], name=frustum_name)
@@ -305,60 +292,7 @@ class MainWindow:
         indices = self.settings_panel.list_camera_indices()
         if not indices:
             return
-
-        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        out_dir = os.path.abspath(os.path.join("export", "camera_sets", ts))
-        images_dir = os.path.join(out_dir, "images")
-        os.makedirs(images_dir, exist_ok=True)
-
-        cameras_out = []
-        for idx in indices:
-            rec = self._camera_records.get(idx)
-            if rec is None:
-                continue
-
-            entry = {
-                "id": int(idx),
-                "source": rec.get("source"),
-                "width": rec.get("width"),
-                "height": rec.get("height"),
-                # Keep compatibility with export/views format
-                "model_matrix": rec.get("model_matrix"),
-                # Alias for clarity
-                "c2w": rec.get("c2w"),
-                "extrinsic": rec.get("extrinsic"),
-                "intrinsic": rec.get("intrinsic"),
-            }
-
-            image_rel = None
-            image_path = rec.get("image_path")
-            image_array = rec.get("image_array")
-            out_png = os.path.join(images_dir, f"cam_{idx:03d}.png")
-
-            if image_array is not None:
-                img_o3d = o3d.geometry.Image(image_array)
-                save_image(out_png, img_o3d)
-                image_rel = os.path.relpath(out_png, out_dir)
-            elif image_path and os.path.exists(image_path):
-                img_o3d = o3d.io.read_image(image_path)
-                save_image(out_png, img_o3d)
-                image_rel = os.path.relpath(out_png, out_dir)
-
-            if image_rel is not None:
-                entry["image_file"] = image_rel
-
-            cameras_out.append(entry)
-
-        payload = {
-            "version": 1,
-            "created_at": ts,
-            "root_format": "open3d_gui_view_state",
-            "cameras": cameras_out,
-        }
-
-        json_path = os.path.join(out_dir, "cameras.json")
-        with open(json_path, "w") as f:
-            json.dump(payload, f, indent=2)
+        export_camera_set(indices=indices, camera_records=self._camera_records)
 
     def on_import_camera_set_clicked(self):
         """
@@ -379,12 +313,9 @@ class MainWindow:
             if not path or not os.path.exists(path):
                 return
             try:
-                with open(path, "r") as f:
-                    payload = json.load(f)
+                payload, base_dir = load_camera_set(path)
             except Exception:
                 return
-
-            base_dir = os.path.dirname(os.path.abspath(path))
             cameras = payload.get("cameras", [])
             if not isinstance(cameras, list):
                 return
@@ -412,14 +343,7 @@ class MainWindow:
                 else:
                     intrinsic = o3d.camera.PinholeCameraIntrinsic(width, height, float(fx), float(fy), float(cx), float(cy))
 
-                img_array = None
-                image_file = cam.get("image_file")
-                image_path = None
-                if image_file:
-                    image_path = os.path.join(base_dir, image_file)
-                    if os.path.exists(image_path):
-                        img_o3d = o3d.io.read_image(image_path)
-                        img_array = np.asarray(img_o3d)
+                img_array, image_path = load_camera_image_array(base_dir, cam.get("image_file"))
 
                 geometries = create_camera_geometry(
                     intrinsic=intrinsic,
@@ -435,25 +359,16 @@ class MainWindow:
                 image_name = f"camera_image_{idx}"
 
                 self.settings_panel.upsert_camera_item(idx)
-                self._camera_records[idx] = {
-                    "source": "import",
-                    "width": int(width),
-                    "height": int(height),
-                    "model_matrix": model_matrix.tolist(),
-                    "c2w": model_matrix.tolist(),
-                    "extrinsic": extrinsic.tolist(),
-                    "intrinsic": {
-                        "width": int(width),
-                        "height": int(height),
-                        "fx": float(intrinsic.get_focal_length()[0]),
-                        "fy": float(intrinsic.get_focal_length()[1]),
-                        "cx": float(intrinsic.get_principal_point()[0]),
-                        "cy": float(intrinsic.get_principal_point()[1]),
-                        "K": np.asarray(intrinsic.intrinsic_matrix).tolist(),
-                    },
-                    "image_path": image_path if (image_path and os.path.exists(image_path)) else None,
-                    "image_array": None,
-                }
+                self._camera_records[idx] = make_camera_record(
+                    source="import",
+                    width=width,
+                    height=height,
+                    model_matrix=model_matrix,
+                    extrinsic=extrinsic,
+                    intrinsic=intrinsic,
+                    image_path=image_path if (image_path and os.path.exists(image_path)) else None,
+                    image_array=None,
+                )
 
                 if len(geometries) > 0:
                     self.scene_view.update_geometry(geometries[0], name=frustum_name)
