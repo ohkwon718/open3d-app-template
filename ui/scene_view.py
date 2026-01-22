@@ -126,6 +126,19 @@ class SceneWidget:
             if not self.widget.scene.has_geometry(name):
                 self._add_to_scene(name)
 
+    def iter_geometry_entries(self):
+        """
+        Yields (name, geometry, material, is_visible).
+        Useful for offscreen rendering/export.
+        """
+        for name, geometry in self._geometries.items():
+            yield (
+                name,
+                geometry,
+                self._materials.get(name),
+                self._visible.get(name, True),
+            )
+
 
     def setup_camera(self, fov_deg: float, bbox: o3d.geometry.AxisAlignedBoundingBox, 
                     center: list):

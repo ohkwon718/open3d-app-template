@@ -124,6 +124,10 @@ class SettingsPanel:
         cameras_group.add_child(self.cameras_tree_view)
         cameras_group.add_fixed(6)
 
+        self.rerender_camera_images_button = _style_button(gui.Button("Rerender camera images"))
+        cameras_group.add_child(self.rerender_camera_images_button)
+        cameras_group.add_fixed(6)
+
         # Keep actions visually consistent: use simple buttons (no extra labels).
         self.delete_selected_camera_button = _style_button(gui.Button("Delete selected camera"))
         cameras_group.add_child(self.delete_selected_camera_button)
