@@ -4,6 +4,8 @@ A minimal, clone-and-go template for building Open3D-based GUI applications.
 
 This repository is intentionally minimal and direct—no frameworks, no unnecessary abstractions. Just Open3D and practical helpers to get you started quickly.
 
+![Demo](democlip/demo.gif)
+
 ## Philosophy
 
 **Minimal, direct, practical.** Use Open3D directly. Split files for clarity, not for architectural theory.
@@ -34,7 +36,8 @@ open3d-app-template/
 ├─ main.py              # Entry point
 ├─ ui/                  # UI components
 │  ├─ __init__.py
-│  ├─ main_window.py    # Main window and callbacks
+│  ├─ main_window.py    # Main window (layout, point cloud, dialogs)
+│  ├─ camera_controller.py # Camera actions + state (add/delete/rerender/import/export)
 │  ├─ scene_view.py     # 3D scene widget wrapper
 │  └─ panels.py         # Settings panel UI
 ├─ tools/               # Reusable helpers
@@ -60,8 +63,15 @@ Simple entry point that initializes the Open3D application and creates the main 
 Main window class that:
 - Creates and manages the window layout
 - Owns `SceneWidget` and `SettingsPanel`
-- Handles UI callbacks and user interactions
 - Contains example geometry generation helpers
+- Wires UI callbacks and delegates camera actions to `CameraController`
+
+### `ui/camera_controller.py`
+
+Camera logic holder that:
+- Owns camera-related state (camera records, counters, selected view/image paths)
+- Implements camera actions (add/delete/rerender, export/import)
+- Keeps `MainWindow` smaller by grouping camera-only callbacks
 
 ### `ui/scene_view.py`
 
@@ -99,7 +109,7 @@ Small, reusable helper functions:
 
 ## Todo
 
-- [ ] Demo Clip
+- [x] Demo Clip
 
 
 ## Notes
