@@ -40,9 +40,10 @@ open3d-app-template/
 ├─ tools/               # Reusable helpers
 │  ├─ __init__.py
 │  ├─ camera_math.py    # Camera matrix utilities
+│  ├─ camera_set_io.py  # Export/import camera sets (JSON + images)
+│  ├─ camera_view_io.py # Save/load Open3D GUI camera view state
 │  ├─ camera_viz.py     # Camera visualization helpers
 │  ├─ screenshot.py     # Screenshot capture/save
-│  └─ view_io.py        # Camera view save/load
 ├─ samples/             # Optional demo data
 │  └─ train/
 └─ requirements.txt
@@ -73,20 +74,32 @@ Wrapper around Open3D's `SceneWidget` that provides:
 
 Settings panel UI component with:
 - Screenshot and camera view controls
-- Geometry generation controls
-- Settings sliders and inputs
+- Point cloud generation controls (as a sample geometry)
+- Camera controls (add, delete, export/import)
+- Visibility toggles
 
 ### `tools/`
 
 Small, reusable helper functions:
 - **`camera_math.py`** - Camera matrix transformations (intrinsic/extrinsic)
+- **`camera_set_io.py`** - Export/import camera sets (JSON + images)
+- **`camera_view_io.py`** - Save/load Open3D GUI camera view state (`model_matrix`, `width`, `height`)
 - **`camera_viz.py`** - Camera visualization geometry helpers
 - **`screenshot.py`** - Screenshot capture and save utilities
-- **`view_io.py`** - Camera view state save/load operations
+
+## Camera features
+
+- **Add cameras**: add a camera frustum (+ optional image plane) from:
+  - current scene camera (**Add from scene**)
+  - a saved view + image (**Add from files**)
+- **Visibility**: toggle per-geometry visibility and show/hide all camera geometries.
+- **Camera sets**: export/import camera sets to/from `export/camera_sets/<timestamp>/`:
+  - `cameras.json`
+  - `images/cam_###.png` (only when a camera has an image)
 
 ## Todo
 
-- [ ] Virtual Camera Visualization
+- [ ] Demo Clip
 
 
 ## Notes
