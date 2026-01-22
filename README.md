@@ -4,6 +4,8 @@ A minimal, clone-and-go template for building Open3D-based GUI applications.
 
 This repository is intentionally minimal and direct—no frameworks, no unnecessary abstractions. Just Open3D and practical helpers to get you started quickly.
 
+This project is an independent template built on top of Open3D and is not affiliated with or endorsed by the Open3D project.
+
 ![Demo](democlip/demo.gif)
 
 ## Philosophy
