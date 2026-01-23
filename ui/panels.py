@@ -41,9 +41,25 @@ class SettingsPanel:
         self.widget.add_child(view_group)
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)
+
+        ######################### Scene group #########################
+        scene_group = gui.CollapsableVert("Scene", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.black_background_checkbox = gui.Checkbox("Black background")
+        self.black_background_checkbox.checked = True
+        scene_group.add_child(self.black_background_checkbox)
+        self.widget.add_child(scene_group)
+        self.widget.add_fixed(separation_height)
+        self.widget.add_fixed(10)
         
-        ######################### Point Cloud group #########################
-        point_cloud_group = gui.CollapsableVert("Point Cloud", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        ######################### Geometry group #########################
+        geometry_group = gui.CollapsableVert("Geometry", 0.25 * em, gui.Margins(em, 0, 0, 0))
+
+        ply_row = gui.Horiz(0.25 * em)
+        ply_row.add_child(gui.Label("Ply"))
+        self.import_ply_button = _style_button(gui.Button("Import"))
+        ply_row.add_child(self.import_ply_button)
+        geometry_group.add_child(ply_row)
+        geometry_group.add_fixed(10)
 
         point_count_row = gui.Horiz(0.25 * em)
         point_count_label = gui.Label("Point Count")
@@ -52,8 +68,8 @@ class SettingsPanel:
         self.point_count_slider.set_limits(100, 10000)
         self.point_count_slider.int_value = 10000
         point_count_row.add_child(self.point_count_slider)
-        point_cloud_group.add_child(point_count_row)
-        point_cloud_group.add_fixed(10)
+        geometry_group.add_child(point_count_row)
+        geometry_group.add_fixed(10)
 
         size_row = gui.Horiz(0.25 * em)
         size_label = gui.Label("Point Cloud Size")
@@ -62,17 +78,13 @@ class SettingsPanel:
         self.size_slider.set_limits(0.1, 5.0)
         self.size_slider.double_value = 1.0
         size_row.add_child(self.size_slider)
-        point_cloud_group.add_child(size_row)
-        point_cloud_group.add_fixed(10)
+        geometry_group.add_child(size_row)
+        geometry_group.add_fixed(10)
 
-        generate_row = gui.Horiz(0.25 * em)
-        generate_label = gui.Label("Generate")
-        generate_row.add_child(generate_label)
-        self.generate_button = _style_button(gui.Button("Generate / Update Point Cloud"))
-        generate_row.add_child(self.generate_button)
-        point_cloud_group.add_child(generate_row)
+        self.generate_button = _style_button(gui.Button("Update Point Cloud"))
+        geometry_group.add_child(self.generate_button)
 
-        self.widget.add_child(point_cloud_group)
+        self.widget.add_child(geometry_group)
         self.widget.add_fixed(separation_height)
         self.widget.add_fixed(10)        
 

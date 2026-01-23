@@ -35,6 +35,29 @@ class SceneWidget:
         center = (self._bbox_origin + self._bbox_size / 2).tolist()
         self.widget.setup_camera(fov_deg, bbox, center)
 
+    def set_background_color(self, rgba: list[float]):
+        """
+        Set scene background color. Compatible across a few Open3D versions.
+        """
+        if self.widget is None or self.widget.scene is None:
+            return
+        color = list(map(float, rgba))
+        # Open3DScene (preferred)
+        if hasattr(self.widget.scene, "set_background"):
+            try:
+                self.widget.scene.set_background(color)
+                return
+            except Exception:
+                pass
+        # Underlying rendering.Scene (fallback)
+        scene = getattr(self.widget.scene, "scene", None)
+        if scene is not None and hasattr(scene, "set_background"):
+            try:
+                scene.set_background(color)
+                return
+            except Exception:
+                pass
+
     def _make_material(self, geometry) -> rendering.MaterialRecord:
         material = rendering.MaterialRecord()
         # Make default visuals "just work" for typical template geometries.

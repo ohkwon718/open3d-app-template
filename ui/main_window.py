@@ -10,6 +10,7 @@ from ui.panels import SettingsPanel
 from ui.camera_controller import CameraController
 from tools.camera_view_io import save_view_state, load_view_state
 from tools.screenshot import save_image
+from tools.ply_io import load_ply_geometry
 
 
 def generate_point_cloud_data(count: int = 1000, size: float = 1.0):
@@ -58,6 +59,7 @@ class MainWindow:
         self.window.add_child(self.scene_view.widget)
         self.window.add_child(self.settings_panel.widget)
         self._update_ui_from_state()
+        self._apply_scene_ui_settings()
         self._init_default_geometries()
 
     def _register_geometry_toggle(self, name: str, label: str):
@@ -113,6 +115,8 @@ class MainWindow:
         self.settings_panel.save_camera_button.set_on_clicked(self.on_save_camera)
         self.settings_panel.load_camera_button.set_on_clicked(self.on_load_camera)
         self.settings_panel.load_latest_camera_button.set_on_clicked(self.on_load_latest_camera)
+        self.settings_panel.black_background_checkbox.set_on_checked(self.on_black_background_checked)
+        self.settings_panel.import_ply_button.set_on_clicked(self.on_import_ply_clicked)
         self.settings_panel.generate_button.set_on_clicked(self.on_generate_clicked)
         self.settings_panel.point_count_slider.set_on_value_changed(self.on_point_count_changed)
         self.settings_panel.size_slider.set_on_value_changed(self.on_size_changed)
@@ -134,6 +138,17 @@ class MainWindow:
         # Sliders show values directly; no extra labels to sync.
         pass
 
+    def _apply_scene_ui_settings(self):
+        # Default to black background, controlled by the checkbox.
+        self.on_black_background_checked(self.settings_panel.black_background_checkbox.checked)
+
+    def on_black_background_checked(self, is_checked: bool):
+        if is_checked:
+            self.scene_view.set_background_color([0.0, 0.0, 0.0, 1.0])
+        else:
+            # Light gray fallback (keeps UI readable without assuming Open3D's default).
+            self.scene_view.set_background_color([0.95, 0.95, 0.95, 1.0])
+
 
     def on_generate_clicked(self):
         # Generate / update the point cloud only.
@@ -144,6 +159,38 @@ class MainWindow:
         geometry = create_point_cloud(points, colors)
         self.scene_view.update_geometry(geometry, name="main_geometry")
         self._register_geometry_toggle("main_geometry", "Point Cloud")
+
+    def on_import_ply_clicked(self):
+        original_cwd = os.getcwd()
+        start_dir = os.path.abspath(os.path.join("samples")) if os.path.exists("samples") else os.getcwd()
+
+        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Import PLY", self.window.theme)
+        dlg.add_filter(".ply", "PLY files")
+        dlg.set_path(start_dir)
+
+        def on_done(path):
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+            if not path or not os.path.exists(path):
+                return
+
+            geom = load_ply_geometry(path)
+            print(f"Loaded PLY geometry: {geom}")
+            if geom is None:
+                return
+
+            # Keep a single "ply" geometry that gets replaced on re-import.
+            self.scene_view.update_geometry(geom, name="ply")
+            self._register_geometry_toggle("ply", "PLY")
+            self.scene_view.fit_camera_to_geometry(geom)
+
+        def on_cancel():
+            os.chdir(original_cwd)
+            self.window.close_dialog()
+
+        dlg.set_on_cancel(on_cancel)
+        dlg.set_on_done(on_done)
+        self.window.show_dialog(dlg)
 
 
     def on_point_count_changed(self, value):
