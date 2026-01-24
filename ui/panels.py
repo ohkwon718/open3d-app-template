@@ -58,6 +58,9 @@ class SettingsPanel:
         ply_row.add_child(gui.Label("Ply"))
         self.import_ply_button = _style_button(gui.Button("Import"))
         ply_row.add_child(self.import_ply_button)
+        self.ply_show_edges_checkbox = gui.Checkbox("Show edges")
+        self.ply_show_edges_checkbox.checked = True
+        ply_row.add_child(self.ply_show_edges_checkbox)
         geometry_group.add_child(ply_row)
         geometry_group.add_fixed(10)
 

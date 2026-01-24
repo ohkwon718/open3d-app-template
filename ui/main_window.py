@@ -44,6 +44,7 @@ class MainWindow:
         # State
         self.point_count = 10000
         self.geometry_size = 1.0
+        self._last_ply_geometry = None
         self.camera = CameraController(
             window=self.window,
             scene_view=self.scene_view,
@@ -117,6 +118,7 @@ class MainWindow:
         self.settings_panel.load_latest_camera_button.set_on_clicked(self.on_load_latest_camera)
         self.settings_panel.black_background_checkbox.set_on_checked(self.on_black_background_checked)
         self.settings_panel.import_ply_button.set_on_clicked(self.on_import_ply_clicked)
+        self.settings_panel.ply_show_edges_checkbox.set_on_checked(self.on_ply_show_edges_checked)
         self.settings_panel.generate_button.set_on_clicked(self.on_generate_clicked)
         self.settings_panel.point_count_slider.set_on_value_changed(self.on_point_count_changed)
         self.settings_panel.size_slider.set_on_value_changed(self.on_size_changed)
@@ -175,13 +177,17 @@ class MainWindow:
                 return
 
             geom = load_ply_geometry(path)
-            print(f"Loaded PLY geometry: {geom}")
             if geom is None:
                 return
 
             # Keep a single "ply" geometry that gets replaced on re-import.
             self.scene_view.update_geometry(geom, name="ply")
             self._register_geometry_toggle("ply", "PLY")
+            self._last_ply_geometry = geom
+
+            # If the PLY is a mesh, also show its edges as a LineSet overlay.
+            # This makes the mesh silhouette/triangulation visible in the GUI.
+            self._sync_ply_edges()
             self.scene_view.fit_camera_to_geometry(geom)
 
         def on_cancel():
@@ -191,6 +197,28 @@ class MainWindow:
         dlg.set_on_cancel(on_cancel)
         dlg.set_on_done(on_done)
         self.window.show_dialog(dlg)
+
+
+    def on_ply_show_edges_checked(self, is_checked: bool):
+        self._sync_ply_edges()
+
+
+    def _sync_ply_edges(self):
+        """
+        Create/remove the mesh edge overlay based on the checkbox.
+        """
+        show_edges = bool(self.settings_panel.ply_show_edges_checkbox.checked)
+        geom = self.scene_view.get_geometry("ply") or self._last_ply_geometry
+
+        if show_edges and isinstance(geom, o3d.geometry.TriangleMesh):
+            edges = o3d.geometry.LineSet.create_from_triangle_mesh(geom)
+            edges.paint_uniform_color([0.0, 0.0, 0.0])
+            self.scene_view.update_geometry(edges, name="ply_edges")
+            # Edges are controlled by the dedicated checkbox (not the Visibility tree).
+            self.settings_panel.remove_geometry_toggle("ply_edges")
+        else:
+            self.scene_view.remove_geometry("ply_edges")
+            self.settings_panel.remove_geometry_toggle("ply_edges")
 
 
     def on_point_count_changed(self, value):

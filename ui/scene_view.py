@@ -133,6 +133,9 @@ class SceneWidget:
     def has_geometry(self, name: str) -> bool:
         return name in self._geometries
 
+    def get_geometry(self, name: str):
+        return self._geometries.get(name)
+
     def is_geometry_visible(self, name: str) -> bool:
         return self._visible.get(name, False)
 
